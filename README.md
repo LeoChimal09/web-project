@@ -71,7 +71,13 @@ bun run lint
 
 ## TODO
 
-- [x] Build customer menu page users can browse (new primary objective).
+- [ ] Build online ordering system — customers can add items from menu to cart.
+- [ ] Create shopping cart component and cart state management (`features/cart`).
+- [ ] Add "Add to Cart" button on menu items and handle cart interactions.
+- [ ] Build `/cart` route to review order before checkout.
+- [ ] Create checkout flow with customer info and payment selection.
+- [ ] Add order confirmation page and email notification (future).
+- [x] Build customer menu page with two-column sidebar layout (McDonald's style).
 - [x] Add `/menu` route under `app/(public)/menu/page.tsx`.
 - [x] Add reusable `MenuGrid` and `MenuCard` components under `components/customer`.
 - [x] Add menu data model in `features/menu` and wire to UI.
@@ -86,4 +92,5 @@ bun run lint
 
 - The `RestaurantProject-reference` folder is a design/flow reference and is ignored from commits.
 - We are rebuilding features in modern Next.js + MUI rather than copying PHP implementation details.
+- Next focus: online ordering system so customers can order directly from the menu.
 
