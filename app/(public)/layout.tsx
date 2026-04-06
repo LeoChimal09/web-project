@@ -9,7 +9,7 @@ export default function PublicLayout({
   return (
     <>
       <SiteNavbar />
-      <main>{children}</main>
+      <main style={{ paddingTop: "24px" }}>{children}</main>
       <SiteFooter />
     </>
   );

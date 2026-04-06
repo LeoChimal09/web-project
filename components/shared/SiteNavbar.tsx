@@ -11,13 +11,14 @@ import Link from "next/link";
 
 const navItems = [
   { label: "Home", href: "/" },
+  { label: "Menu", href: "/menu" },
   { label: "Reservation", href: "/reservation" },
   { label: "Admin", href: "/admin" },
 ];
 
 export default function SiteNavbar() {
   return (
-    <AppBar position="sticky" color="transparent" elevation={0}>
+    <AppBar position="sticky" color="default" elevation={1}>
       <Container maxWidth="lg">
         <Toolbar disableGutters sx={{ py: 1, justifyContent: "space-between" }}>
           <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>

@@ -1,44 +1,89 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# TableStory Web Project
+
+A modern restaurant web app built with Next.js App Router and MUI, inspired by a legacy PHP restaurant reference project.
+
+## Current Scope
+
+- Customer-facing experience under `app/(public)`
+- Admin-facing scaffold under `app/(admin)`
+- Shared MUI theme and reusable layout components
+
+## Tech Stack
+
+- Next.js `16.2.2`
+- React `19.2.4`
+- TypeScript
+- MUI (`@mui/material`, `@emotion/react`, `@emotion/styled`)
+- Bun for package management and scripts
+
+## Project Structure
+
+```txt
+app/
+  (public)/
+    layout.tsx
+    page.tsx
+    reservation/page.tsx
+  (admin)/
+    layout.tsx
+    admin/page.tsx
+  layout.tsx
+components/
+  shared/
+    MuiThemeProvider.tsx
+    SiteNavbar.tsx
+    SiteFooter.tsx
+styles/
+  globals.css
+```
+
+## Routes
+
+- `/` -> customer homepage
+- `/reservation` -> customer reservation form (MUI scaffold)
+- `/admin` -> admin dashboard scaffold
 
 ## Getting Started
 
-First, run the development server:
+Install dependencies:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
+bun i
+```
+
+Start development server:
+
+```bash
 bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Typecheck:
 
-You can start editing the page by modifying `app/(public)/page.tsx`. The page auto-updates as you edit the file.
+```bash
+bun run typecheck
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Lint:
+
+```bash
+bun run lint
+```
 
 ## TODO
 
-- [x] Set up the homepage first (MUI-based customer landing page with navbar, hero section, featured menu preview, and footer).
-- [x] Create the customer route structure under `app/(public)`.
+- [x] Build customer menu page users can browse (new primary objective).
+- [x] Add `/menu` route under `app/(public)/menu/page.tsx`.
+- [x] Add reusable `MenuGrid` and `MenuCard` components under `components/customer`.
+- [x] Add menu data model in `features/menu` and wire to UI.
+- [x] Link homepage CTA/navbar to menu page.
+- [x] Set up homepage (MUI-based customer landing page with navbar, hero section, featured menu preview, and footer).
+- [x] Create customer route structure under `app/(public)`.
 - [x] Add shared layout components in `components/shared` (navigation and footer).
-- [x] Build the reservation page flow in MUI.
+- [x] Build reservation page flow in MUI.
 - [x] Scaffold admin pages under `app/(admin)/admin`.
 
-## Learn More
+## Notes
 
-To learn more about Next.js, take a look at the following resources:
+- The `RestaurantProject-reference` folder is a design/flow reference and is ignored from commits.
+- We are rebuilding features in modern Next.js + MUI rather than copying PHP implementation details.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
