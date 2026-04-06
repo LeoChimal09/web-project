@@ -16,9 +16,17 @@ bun dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+You can start editing the page by modifying `app/(public)/page.tsx`. The page auto-updates as you edit the file.
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+
+## TODO
+
+- [x] Set up the homepage first (MUI-based customer landing page with navbar, hero section, featured menu preview, and footer).
+- [x] Create the customer route structure under `app/(public)`.
+- [x] Add shared layout components in `components/shared` (navigation and footer).
+- [x] Build the reservation page flow in MUI.
+- [x] Scaffold admin pages under `app/(admin)/admin`.
 
 ## Learn More
 
