@@ -23,23 +23,40 @@ app/
   (public)/
     layout.tsx
     page.tsx
+    menu/page.tsx
+    cart/page.tsx
+    checkout/page.tsx
+    order-confirmation/page.tsx
+    orders/page.tsx
+    orders/[ref]/page.tsx
     reservation/page.tsx
   (admin)/
     layout.tsx
     admin/page.tsx
   layout.tsx
 components/
+  customer/
+  shared/
+features/
+  cart/
+  checkout/
+  menu/
+components/
   shared/
     MuiThemeProvider.tsx
     SiteNavbar.tsx
     SiteFooter.tsx
-styles/
-  globals.css
 ```
 
 ## Routes
 
 - `/` -> customer homepage
+- `/menu` -> customer menu and add-to-order flow
+- `/cart` -> grouped cart review before checkout
+- `/checkout` -> customer checkout form
+- `/order-confirmation` -> order confirmation summary
+- `/orders` -> recent order history
+- `/orders/[ref]` -> single order detail/status page
 - `/reservation` -> customer reservation form (MUI scaffold)
 - `/admin` -> admin dashboard scaffold
 
@@ -72,8 +89,7 @@ bun run lint
 ## TODO
 
 ### Customer-Facing (High Priority)
-- [ ] **Checkout flow** — `/checkout` page with customer info form (name, contact, delivery/pickup toggle) and payment method selection. The cart page already has a "Proceed to Checkout" button wired for this.
-- [ ] **Order confirmation page** — `/order-confirmation` shown after a successful checkout, with full order summary and a reference number.
+- [ ] **Active order tracking** — real backend-driven status updates so order progress is not limited to browser-local state.
 
 ### Admin Track
 - [ ] **Admin orders view** — list of placed orders with status workflow (Pending → In Progress → Ready → Completed).
@@ -81,13 +97,22 @@ bun run lint
 
 ### Infrastructure / Polish
 - [ ] **Reservation form submission** — the form exists at `/reservation` but does not submit anywhere yet.
-- [ ] **Cart persistence** — hydrate `CartContext` from `localStorage` so orders survive a page refresh.
+- [ ] **Cart persistence** — hydrate `CartContext` from `localStorage` so active cart/orders survive a page refresh.
+- [ ] **Persist order history server-side** — current order history is browser-local and can be cleared by the user.
 
 ### Completed
 - [x] Online ordering system — order-based cart (`features/cart`) with `pendingLines` → `placeOrder` flow.
 - [x] Shopping cart component and cart state management (`features/cart/CartContext.tsx`).
 - [x] "Add to Order" on menu items with confirmation modal, drink suggestions, qty controls.
 - [x] `/cart` route to review placed orders before checkout.
+- [x] `/checkout` route with contact info, fulfillment toggle, payment selection, and order summary.
+- [x] `/order-confirmation` route with placed-order summary and reference number.
+- [x] Browser-persisted order history using `features/checkout/OrderHistoryContext.tsx`.
+- [x] `/orders` route to review recent orders with status, remake, cancel, and remove-from-history actions.
+- [x] `/orders/[ref]` route to inspect a single order in detail.
+- [x] Remake-order flow that copies a previous order back into the cart and routes to checkout.
+- [x] Pending-order cancellation flow.
+- [x] Reusable in-app confirmation modal for order actions.
 - [x] `CartMiniBar` sticky header bar shown whenever active orders exist.
 - [x] Build customer menu page with two-column sidebar layout (McDonald's style).
 - [x] Add `/menu` route under `app/(public)/menu/page.tsx`.
