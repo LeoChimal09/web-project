@@ -36,7 +36,9 @@ export default function OrderProgressBanner() {
   }, []);
 
   const activeOrder = useMemo(() => {
-    return orders.find((order) => isActiveOrderStatus(order.status) && !dismissedRefs.includes(order.ref));
+    return orders.find(
+      (order) => isActiveOrderStatus(order.status, order.cancelledBy) && !dismissedRefs.includes(order.ref),
+    );
   }, [dismissedRefs, orders]);
 
   if (loading || !activeOrder) {
@@ -54,7 +56,7 @@ export default function OrderProgressBanner() {
                 Order {activeOrder.ref} update
               </Typography>
               <Typography variant="caption" color="text.secondary" sx={{ display: "block", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                {getOrderProgressMessage(activeOrder.status, activeOrder.etaMinutes)}
+                {getOrderProgressMessage(activeOrder.status, activeOrder.etaMinutes, activeOrder.cancellationNote)}
               </Typography>
             </Box>
           </Stack>

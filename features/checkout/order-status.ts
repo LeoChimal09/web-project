@@ -10,11 +10,15 @@ export function formatOrderEtaMinutes(value: OrderEtaMinutes) {
   return value === 60 ? "60+ minutes" : `${value} minutes`;
 }
 
-export function isActiveOrderStatus(status: OrderStatus) {
-  return status === "pending" || status === "in_progress" || status === "ready";
+export function isActiveOrderStatus(status: OrderStatus, cancelledBy?: "admin" | "customer" | null) {
+  return status === "in_progress" || status === "ready" || (status === "cancelled" && cancelledBy === "admin");
 }
 
-export function getOrderProgressMessage(status: OrderStatus, etaMinutes?: OrderEtaMinutes | null) {
+export function getOrderProgressMessage(
+  status: OrderStatus,
+  etaMinutes?: OrderEtaMinutes | null,
+  cancellationNote?: string | null,
+) {
   if (status === "pending") {
     return "Order received. We are about to start preparing it.";
   }
@@ -33,6 +37,10 @@ export function getOrderProgressMessage(status: OrderStatus, etaMinutes?: OrderE
 
   if (status === "completed") {
     return "This order is completed.";
+  }
+
+  if (cancellationNote?.trim()) {
+    return `This order was cancelled. Note from restaurant: ${cancellationNote.trim()}`;
   }
 
   return "This order has been cancelled.";

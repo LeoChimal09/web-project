@@ -13,6 +13,7 @@ import DialogContent from "@mui/material/DialogContent";
 import DialogTitle from "@mui/material/DialogTitle";
 import IconButton from "@mui/material/IconButton";
 import Stack from "@mui/material/Stack";
+import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import CloseIcon from "@mui/icons-material/Close";
 import Link from "next/link";
@@ -41,6 +42,8 @@ export default function AdminOrdersPage() {
   const [showBottomFade, setShowBottomFade] = useState(false);
   const [hiddenOrderRefs, setHiddenOrderRefs] = useState<string[]>([]);
   const [etaDialogOrderRef, setEtaDialogOrderRef] = useState<string | null>(null);
+  const [cancelDialogOrderRef, setCancelDialogOrderRef] = useState<string | null>(null);
+  const [cancelNoteInput, setCancelNoteInput] = useState("");
   const [confirmState, setConfirmState] = useState<{
     open: boolean;
     title: string;
@@ -69,8 +72,21 @@ export default function AdminOrdersPage() {
       return;
     }
 
-    void updateOrderStatus(etaDialogOrderRef, "in_progress", etaMinutes);
+    void updateOrderStatus(etaDialogOrderRef, "in_progress", { etaMinutes });
     setEtaDialogOrderRef(null);
+  };
+
+  const handleConfirmCancel = () => {
+    if (!cancelDialogOrderRef) {
+      return;
+    }
+
+    void updateOrderStatus(cancelDialogOrderRef, "cancelled", {
+      cancellationNote: cancelNoteInput.trim() || undefined,
+      cancelledBy: "admin",
+    });
+    setCancelDialogOrderRef(null);
+    setCancelNoteInput("");
   };
 
   useEffect(() => {
@@ -141,7 +157,7 @@ export default function AdminOrdersPage() {
         </Typography>
         <Typography variant="h3">Orders</Typography>
         <Typography color="text.secondary">
-          Test-only view for the mock order API. Status changes are kept in server memory and reset when the dev server restarts.
+          Test-only admin view for local development. Status changes are persisted in the configured database.
         </Typography>
       </Stack>
 
@@ -293,6 +309,12 @@ export default function AdminOrdersPage() {
                                           return;
                                         }
 
+                                        if (nextStatus === "cancelled") {
+                                          setCancelDialogOrderRef(order.ref);
+                                          setCancelNoteInput("");
+                                          return;
+                                        }
+
                                         void updateOrderStatus(order.ref, nextStatus);
                                       }}
                                     >
@@ -379,6 +401,48 @@ export default function AdminOrdersPage() {
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2.5 }}>
           <Button onClick={() => setEtaDialogOrderRef(null)}>Cancel</Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={Boolean(cancelDialogOrderRef)}
+        onClose={() => {
+          setCancelDialogOrderRef(null);
+          setCancelNoteInput("");
+        }}
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle>Cancel Order</DialogTitle>
+        <DialogContent>
+          <Stack spacing={1.5} sx={{ pt: 0.5 }}>
+            <Typography color="text.secondary" variant="body2">
+              You can add an optional note for the customer explaining why order {cancelDialogOrderRef ?? ""} was cancelled.
+            </Typography>
+            <TextField
+              label="Cancellation note (optional)"
+              placeholder="Example: Item unavailable right now. Please place a new order in 20 minutes."
+              value={cancelNoteInput}
+              onChange={(event) => setCancelNoteInput(event.target.value)}
+              multiline
+              minRows={3}
+              inputProps={{ maxLength: 300 }}
+              helperText={`${cancelNoteInput.length}/300`}
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2.5 }}>
+          <Button
+            onClick={() => {
+              setCancelDialogOrderRef(null);
+              setCancelNoteInput("");
+            }}
+          >
+            Back
+          </Button>
+          <Button color="error" variant="contained" onClick={handleConfirmCancel}>
+            Cancel Order
+          </Button>
         </DialogActions>
       </Dialog>
     </Container>

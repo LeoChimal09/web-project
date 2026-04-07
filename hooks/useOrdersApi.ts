@@ -1,7 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import type { CreateOrderInput, OrderEtaMinutes, OrderStatus, PlacedOrder } from "@/features/checkout/checkout.types";
+import type {
+  CancellationActor,
+  CreateOrderInput,
+  OrderEtaMinutes,
+  OrderStatus,
+  PlacedOrder,
+} from "@/features/checkout/checkout.types";
 
 type UseOrdersApiOptions = {
   ref?: string | null;
@@ -84,17 +90,41 @@ export function useOrdersApi(options: UseOrdersApiOptions = {}) {
     return nextOrder;
   }, []);
 
-  const updateOrderStatus = useCallback(async (orderRef: string, status: OrderStatus, etaMinutes?: OrderEtaMinutes) => {
+  const updateOrderStatus = useCallback(
+    async (
+      orderRef: string,
+      status: OrderStatus,
+      options?: { etaMinutes?: OrderEtaMinutes; cancellationNote?: string; cancelledBy?: CancellationActor },
+    ) => {
+      const payload: {
+        status: OrderStatus;
+        etaMinutes?: OrderEtaMinutes;
+        cancellationNote?: string;
+        cancelledBy?: CancellationActor;
+      } = { status };
+
+      if (options?.etaMinutes) {
+        payload.etaMinutes = options.etaMinutes;
+      }
+
+      if (options?.cancellationNote !== undefined) {
+        payload.cancellationNote = options.cancellationNote;
+      }
+
+      if (options?.cancelledBy !== undefined) {
+        payload.cancelledBy = options.cancelledBy;
+      }
+
     const updatedOrder = await fetch(`/api/orders/${orderRef}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(
-        etaMinutes ? { status, etaMinutes } : { status },
-      ),
+      body: JSON.stringify(payload),
     }).then(parseApiResponse<PlacedOrder>);
 
     return updateOrder(updatedOrder);
-  }, [updateOrder]);
+    },
+    [updateOrder],
+  );
 
   const deleteOrder = useCallback(async (orderRef: string) => {
     await fetch(`/api/orders/${orderRef}`, {

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createOrder, getAllOrders } from "@/lib/orders-store";
+import { createOrder, getAllOrders } from "@/server/repositories/orders-repository";
 import type { CreateOrderInput } from "@/features/checkout/checkout.types";
 
 function isCreateOrderInput(value: unknown): value is CreateOrderInput {
@@ -12,7 +12,7 @@ function isCreateOrderInput(value: unknown): value is CreateOrderInput {
 }
 
 export async function GET() {
-  return NextResponse.json(getAllOrders());
+  return NextResponse.json(await getAllOrders());
 }
 
 export async function POST(request: Request) {
@@ -22,6 +22,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid order payload." }, { status: 400 });
   }
 
-  const order = createOrder(body);
+  const order = await createOrder(body);
   return NextResponse.json(order, { status: 201 });
 }

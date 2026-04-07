@@ -15,7 +15,7 @@ export default function AdminLayout({
 
   return (
     <>
-      <SiteNavbar />
+      <SiteNavbar showAdmin={isAdminEnabled} />
       <main>
         {isAdminEnabled ? (
           children

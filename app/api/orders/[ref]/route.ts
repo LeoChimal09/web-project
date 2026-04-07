@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
-import { deleteOrder, getOrder, updateOrderStatus } from "@/lib/orders-store";
-import type { OrderEtaMinutes, OrderStatus } from "@/features/checkout/checkout.types";
+import { deleteOrder, getOrder, updateOrderStatus } from "@/server/repositories/orders-repository";
+import type { CancellationActor, OrderEtaMinutes, OrderStatus } from "@/features/checkout/checkout.types";
 import { isValidOrderEtaMinutes } from "@/features/checkout/order-status";
 
 const VALID_ORDER_STATUSES: OrderStatus[] = ["pending", "in_progress", "ready", "completed", "cancelled"];
+const VALID_CANCELLATION_ACTORS: CancellationActor[] = ["admin", "customer"];
 
 type OrderRouteContext = {
   params: Promise<{
@@ -17,7 +18,7 @@ function isOrderStatus(value: unknown): value is OrderStatus {
 
 export async function GET(_request: Request, context: OrderRouteContext) {
   const { ref } = await context.params;
-  const order = getOrder(ref);
+  const order = await getOrder(ref);
 
   if (!order) {
     return NextResponse.json({ error: "Order not found." }, { status: 404 });
@@ -31,8 +32,11 @@ export async function PATCH(request: Request, context: OrderRouteContext) {
   const body = await request.json().catch(() => null);
   const status = body && typeof body === "object" ? (body as { status?: unknown }).status : undefined;
   const etaMinutes = body && typeof body === "object" ? (body as { etaMinutes?: unknown }).etaMinutes : undefined;
+  const cancellationNote =
+    body && typeof body === "object" ? (body as { cancellationNote?: unknown }).cancellationNote : undefined;
+  const cancelledBy = body && typeof body === "object" ? (body as { cancelledBy?: unknown }).cancelledBy : undefined;
 
-  const existingOrder = getOrder(ref);
+  const existingOrder = await getOrder(ref);
   if (!existingOrder) {
     return NextResponse.json({ error: "Order not found." }, { status: 404 });
   }
@@ -42,6 +46,8 @@ export async function PATCH(request: Request, context: OrderRouteContext) {
   }
 
   let parsedEtaMinutes: OrderEtaMinutes | null | undefined;
+  let parsedCancellationNote: string | null | undefined;
+  let parsedCancelledBy: CancellationActor | null | undefined;
 
   if (etaMinutes !== undefined && etaMinutes !== null) {
     if (!isValidOrderEtaMinutes(etaMinutes)) {
@@ -55,7 +61,35 @@ export async function PATCH(request: Request, context: OrderRouteContext) {
     return NextResponse.json({ error: "Please select an ETA when moving an order to In Progress." }, { status: 400 });
   }
 
-  const order = updateOrderStatus(ref, status, { etaMinutes: parsedEtaMinutes });
+  if (cancellationNote !== undefined && cancellationNote !== null) {
+    if (typeof cancellationNote !== "string") {
+      return NextResponse.json({ error: "Invalid cancellation note." }, { status: 400 });
+    }
+
+    parsedCancellationNote = cancellationNote.trim() || null;
+  }
+
+  if (parsedCancellationNote && parsedCancellationNote.length > 300) {
+    return NextResponse.json({ error: "Cancellation note must be 300 characters or less." }, { status: 400 });
+  }
+
+  if (cancelledBy !== undefined && cancelledBy !== null) {
+    if (typeof cancelledBy !== "string" || !VALID_CANCELLATION_ACTORS.includes(cancelledBy as CancellationActor)) {
+      return NextResponse.json({ error: "Invalid cancellation actor." }, { status: 400 });
+    }
+
+    parsedCancelledBy = cancelledBy as CancellationActor;
+  }
+
+  if (status === "cancelled" && !parsedCancelledBy) {
+    parsedCancelledBy = "customer";
+  }
+
+  const order = await updateOrderStatus(ref, status, {
+    etaMinutes: parsedEtaMinutes,
+    cancellationNote: parsedCancellationNote,
+    cancelledBy: parsedCancelledBy,
+  });
 
   if (order === null) {
     return NextResponse.json(
@@ -74,7 +108,7 @@ export async function PATCH(request: Request, context: OrderRouteContext) {
 
 export async function DELETE(_request: Request, context: OrderRouteContext) {
   const { ref } = await context.params;
-  const removed = deleteOrder(ref);
+  const removed = await deleteOrder(ref);
 
   if (removed === null) {
     return NextResponse.json(

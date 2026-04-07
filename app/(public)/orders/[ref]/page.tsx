@@ -141,6 +141,11 @@ export default function OrderDetailPage({ params }: { params: Promise<{ ref: str
                     Estimated time: {formatOrderEtaMinutes(order.etaMinutes)}
                   </Typography>
                 )}
+                {order.status === "cancelled" && order.cancellationNote?.trim() && (
+                  <Typography variant="body2" color="error.main" sx={{ fontWeight: 700 }}>
+                    Restaurant note: {order.cancellationNote}
+                  </Typography>
+                )}
               </Stack>
             </CardContent>
           </Card>

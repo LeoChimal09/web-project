@@ -25,11 +25,15 @@ export type OrderStatus = "pending" | "in_progress" | "ready" | "completed" | "c
 
 export type OrderEtaMinutes = 15 | 30 | 45 | 60;
 
+export type CancellationActor = "admin" | "customer";
+
 export type PlacedOrder = {
   ref: string;
   placedAt: string; // ISO string
   status: OrderStatus;
   etaMinutes?: OrderEtaMinutes | null;
+  cancellationNote?: string | null;
+  cancelledBy?: CancellationActor | null;
   form: CheckoutForm;
   orders: import("@/features/cart/cart.types").OrderEntry[];
   totalPrice: number;

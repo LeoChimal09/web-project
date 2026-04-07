@@ -39,6 +39,9 @@ yarn-error.log*
 # vercel
 .vercel
 
+# drizzle
+.drizzle-studio-cache/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

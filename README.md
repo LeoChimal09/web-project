@@ -5,7 +5,7 @@ A modern restaurant web app built with Next.js App Router and MUI, inspired by a
 ## Current Scope
 
 - Customer-facing experience under `app/(public)`
-- Admin-facing scaffold under `app/(admin)`
+- Admin-facing workflow under `app/(admin)` (env-gated test mode)
 - Shared MUI theme and reusable layout components
 
 ## Tech Stack
@@ -33,6 +33,10 @@ app/
   (admin)/
     layout.tsx
     admin/page.tsx
+    admin/orders/page.tsx
+  api/
+    orders/route.ts
+    orders/[ref]/route.ts
   layout.tsx
 components/
   customer/
@@ -41,6 +45,16 @@ features/
   cart/
   checkout/
   menu/
+hooks/
+  useOrdersApi.ts
+lib/
+  admin-access.ts
+server/
+  db/
+    client.ts
+    schema.ts
+  repositories/
+    orders-repository.ts
 components/
   shared/
     MuiThemeProvider.tsx
@@ -95,21 +109,43 @@ ADMIN_TEST_MODE=true
 
 Set that in your `.env` file to enable admin-only routes during local testing.
 
+Database workflow (code-first):
+
+```bash
+bun run db:generate
+bun run db:push
+```
+
+- Define and update tables in `server/db/schema.ts`.
+- Generate SQL migrations into `drizzle/` (committed to source control).
+- Push schema changes to your MySQL instance from code.
+- Run `db:push` any time you add or change columns before testing locally.
+
 ## TODO
 
 ### Customer-Facing (High Priority)
-- [ ] **Active order tracking** — real backend-driven status updates so order progress is not limited to browser-local state.
+- [ ] **Cross-device order notifications** — persist notification dismiss state server-side if users should retain it across browsers/devices.
 
 ### Admin Track
-- [ ] **Admin orders view** — list of placed orders with status workflow (Pending → In Progress → Ready → Completed).
 - [ ] **Admin menu management** — CRUD UI for menu items (currently hardcoded in `features/menu/menu.data.ts`).
 
 ### Infrastructure / Polish
 - [ ] **Reservation form submission** — the form exists at `/reservation` but does not submit anywhere yet.
 - [ ] **Cart persistence** — hydrate `CartContext` from `localStorage` so active cart/orders survive a page refresh.
-- [ ] **Persist order history server-side** — current order history is browser-local and can be cleared by the user.
+- [ ] **Auth for admin mode** — replace env-only admin gating with real auth/role checks.
 
 ### Completed
+- [x] Production persistence for orders using Drizzle + MySQL (`server/db/schema.ts`, `server/repositories/orders-repository.ts`).
+- [x] Admin cancel note — admin can optionally provide a reason when cancelling an order; customer sees it in the top notification and order detail.
+- [x] Orders API (`/api/orders`, `/api/orders/[ref]`) with full CRUD backed by MySQL.
+- [x] Checkout, confirmation, and customer order pages switched to API-backed order data via `hooks/useOrdersApi.ts`.
+- [x] Admin test mode gate using `ADMIN_TEST_MODE=true`.
+- [x] Header admin navigation is only visible when admin test mode is enabled.
+- [x] Admin orders workflow view with status controls and scroll/fade behavior.
+- [x] In-progress ETA selection in admin (`15/30/45/60+ minutes`) and ETA persistence on orders.
+- [x] Customer-facing ETA visibility in order history, order details, and top progress notification.
+- [x] Dismissible top order progress notification with quick link to the specific active order.
+- [x] Browser-local "remove from history" behavior for customer and admin views (does not delete shared order records).
 - [x] Online ordering system — order-based cart (`features/cart`) with `pendingLines` → `placeOrder` flow.
 - [x] Shopping cart component and cart state management (`features/cart/CartContext.tsx`).
 - [x] "Add to Order" on menu items with confirmation modal, drink suggestions, qty controls.

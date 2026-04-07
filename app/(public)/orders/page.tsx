@@ -149,7 +149,7 @@ export default function OrdersPage() {
             <Typography variant="h3">My Orders</Typography>
             <Typography color="text.secondary">
               {orders.length === 0
-                ? "You haven&apos;t placed any orders yet."
+                ? "You haven't placed any orders yet."
                 : "No orders are currently visible in your browser history."}
             </Typography>
             <Button variant="contained" LinkComponent={Link} href="/menu" sx={{ mx: "auto" }}>
