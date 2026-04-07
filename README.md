@@ -122,6 +122,77 @@ bun run lint
 - Customer order listing is scoped to the signed-in customer email.
 - Guest order listing is scoped to browser-owned order refs.
 
+## Production Setup
+
+1. Provision production infrastructure.
+- MySQL database instance.
+- Host for the Next.js app (Vercel, VPS, container platform, etc.).
+
+2. Configure production environment variables in your hosting platform.
+
+```bash
+DATABASE_URL=mysql://user:pass@db-host:3306/dbname
+AUTH_SECRET=strong-random-secret
+GITHUB_ID=github-oauth-client-id
+GITHUB_SECRET=github-oauth-client-secret
+ADMIN_EMAILS=admin1@example.com,admin2@example.com
+NEXTAUTH_URL=https://your-domain.com
+```
+
+3. Update your GitHub OAuth app.
+- Homepage URL: `https://your-domain.com`
+- Authorization callback URL: `https://your-domain.com/api/auth/callback/github`
+
+4. Apply schema changes in production.
+
+```bash
+bun run db:push
+```
+
+5. Deploy and verify.
+- Customer sign in/sign up works.
+- Admin email in sign-in modal routes to GitHub OAuth.
+- Admin account can access `/admin` and `/admin/orders`.
+- Non-admin accounts cannot access admin routes.
+
+### Vercel Runbook
+
+1. Import repository in Vercel.
+- Framework preset: `Next.js`
+- Root directory: project root
+
+2. Set environment variables in Vercel Project Settings -> Environment Variables.
+- `DATABASE_URL`
+- `AUTH_SECRET`
+- `GITHUB_ID`
+- `GITHUB_SECRET`
+- `ADMIN_EMAILS`
+- `NEXTAUTH_URL` (set to your production domain)
+
+3. Configure GitHub OAuth app for Vercel domain.
+- Homepage URL: `https://your-domain.com`
+- Callback URL: `https://your-domain.com/api/auth/callback/github`
+
+4. Deploy, then run schema sync against production DB.
+
+```bash
+bun run db:push
+```
+
+5. Validate production flows.
+- Customer sign-up/sign-in works.
+- Admin allowlisted email is routed to GitHub auth.
+- Admin routes are inaccessible to non-admin users.
+
+Tip: if you create Vercel preview environments, keep OAuth callback and `NEXTAUTH_URL` aligned with the target domain you are testing.
+
+## Adding Admins
+
+- Add/remove emails in `ADMIN_EMAILS` (comma-separated).
+- Restart/redeploy so env var changes are applied.
+- Each admin must sign in with a GitHub account whose email matches an allowlisted email.
+- Admins do not need their own OAuth app; one app configuration is shared by the project.
+
 ## Database Workflow
 
 ```bash
