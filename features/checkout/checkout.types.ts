@@ -34,6 +34,7 @@ export type PlacedOrder = {
   etaMinutes?: OrderEtaMinutes | null;
   cancellationNote?: string | null;
   cancelledBy?: CancellationActor | null;
+  notificationDismissedAt?: string | null;
   form: CheckoutForm;
   orders: import("@/features/cart/cart.types").OrderEntry[];
   totalPrice: number;

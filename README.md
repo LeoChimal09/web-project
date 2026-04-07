@@ -1,12 +1,12 @@
 # TableStory Web Project
 
-A modern restaurant web app built with Next.js App Router and MUI, inspired by a legacy PHP restaurant reference project.
+A modern restaurant web app built with Next.js App Router and MUI, inspired by a legacy restaurant ordering reference flow.
 
 ## Current Scope
 
-- Customer-facing experience under `app/(public)`
-- Admin-facing workflow under `app/(admin)` (env-gated test mode)
-- Shared MUI theme and reusable layout components
+- Customer experience under `app/(public)` with menu, cart, checkout, and order tracking.
+- Admin workflow under `app/(admin)` protected by GitHub OAuth + email allowlist.
+- Shared design system with MUI and stable SSR style injection for App Router.
 
 ## Tech Stack
 
@@ -14,6 +14,8 @@ A modern restaurant web app built with Next.js App Router and MUI, inspired by a
 - React `19.2.4`
 - TypeScript
 - MUI (`@mui/material`, `@emotion/react`, `@emotion/styled`)
+- Drizzle ORM + MySQL2
+- NextAuth (`next-auth`)
 - Bun for package management and scripts
 
 ## Project Structure
@@ -29,16 +31,18 @@ app/
     order-confirmation/page.tsx
     orders/page.tsx
     orders/[ref]/page.tsx
-    reservation/page.tsx
   (admin)/
     layout.tsx
     admin/page.tsx
     admin/orders/page.tsx
   api/
+    auth/[...nextauth]/route.ts
+    auth/account-role/route.ts
     orders/route.ts
     orders/[ref]/route.ts
   layout.tsx
 components/
+  auth/
   customer/
   shared/
 features/
@@ -48,32 +52,30 @@ features/
 hooks/
   useOrdersApi.ts
 lib/
-  admin-access.ts
+  auth.ts
+  admin-session.ts
 server/
   db/
     client.ts
     schema.ts
   repositories/
     orders-repository.ts
-components/
-  shared/
-    MuiThemeProvider.tsx
-    SiteNavbar.tsx
-    SiteFooter.tsx
+    customers-repository.ts
+drizzle/
+  (generated migration files)
 ```
 
 ## Routes
 
-- `/` -> customer homepage
-- `/menu` -> customer menu and add-to-order flow
-- `/cart` -> grouped cart review before checkout
-- `/checkout` -> customer checkout form
-- `/order-confirmation` -> order confirmation summary
-- `/orders` -> recent order history
-- `/orders/[ref]` -> single order detail/status page
-- `/reservation` -> customer reservation form (MUI scaffold)
-- `/admin` -> admin dashboard scaffold
-- `/admin/orders` -> test-only admin orders view
+- `/` customer homepage
+- `/menu` customer menu and add-to-order flow
+- `/cart` grouped cart review before checkout
+- `/checkout` checkout form
+- `/order-confirmation` order summary
+- `/orders` current user order history
+- `/orders/[ref]` single order detail/status page
+- `/admin` admin dashboard
+- `/admin/orders` admin orders workflow
 
 ## Getting Started
 
@@ -83,95 +85,127 @@ Install dependencies:
 bun i
 ```
 
-Start development server:
+Create `.env` with required values:
+
+```bash
+DATABASE_URL=mysql://user:pass@localhost:3306/dbname
+AUTH_SECRET=replace-with-random-secret
+GITHUB_ID=github-oauth-client-id
+GITHUB_SECRET=github-oauth-client-secret
+ADMIN_EMAILS=admin1@example.com,admin2@example.com
+```
+
+Run database schema sync:
+
+```bash
+bun run db:push
+```
+
+Run dev server:
 
 ```bash
 bun dev
 ```
 
-Typecheck:
+Checks:
 
 ```bash
 bun run typecheck
-```
-
-Lint:
-
-```bash
 bun run lint
 ```
 
-Admin test mode:
+## Auth Model
+
+- Customers use credentials sign-in/sign-up in the welcome modal.
+- If the entered email is allowlisted as admin, the same modal automatically routes to GitHub OAuth.
+- Admin privileges are granted only to GitHub-authenticated sessions with allowlisted emails.
+- Customer order listing is scoped to the signed-in customer email.
+- Guest order listing is scoped to browser-owned order refs.
+
+## Production Setup
+
+1. Provision production infrastructure.
+- MySQL database instance.
+- Host for the Next.js app (Vercel, VPS, container platform, etc.).
+
+2. Configure production environment variables in your hosting platform.
 
 ```bash
-ADMIN_TEST_MODE=true
+DATABASE_URL=mysql://user:pass@db-host:3306/dbname
+AUTH_SECRET=strong-random-secret
+GITHUB_ID=github-oauth-client-id
+GITHUB_SECRET=github-oauth-client-secret
+ADMIN_EMAILS=admin1@example.com,admin2@example.com
+NEXTAUTH_URL=https://your-domain.com
 ```
 
-Set that in your `.env` file to enable admin-only routes during local testing.
+3. Update your GitHub OAuth app.
+- Homepage URL: `https://your-domain.com`
+- Authorization callback URL: `https://your-domain.com/api/auth/callback/github`
 
-Database workflow (code-first):
+4. Apply schema changes in production.
+
+```bash
+bun run db:push
+```
+
+5. Deploy and verify.
+- Customer sign in/sign up works.
+- Admin email in sign-in modal routes to GitHub OAuth.
+- Admin account can access `/admin` and `/admin/orders`.
+- Non-admin accounts cannot access admin routes.
+
+### Vercel Runbook
+
+1. Import repository in Vercel.
+- Framework preset: `Next.js`
+- Root directory: project root
+
+2. Set environment variables in Vercel Project Settings -> Environment Variables.
+- `DATABASE_URL`
+- `AUTH_SECRET`
+- `GITHUB_ID`
+- `GITHUB_SECRET`
+- `ADMIN_EMAILS`
+- `NEXTAUTH_URL` (set to your production domain)
+
+3. Configure GitHub OAuth app for Vercel domain.
+- Homepage URL: `https://your-domain.com`
+- Callback URL: `https://your-domain.com/api/auth/callback/github`
+
+4. Deploy, then run schema sync against production DB.
+
+```bash
+bun run db:push
+```
+
+5. Validate production flows.
+- Customer sign-up/sign-in works.
+- Admin allowlisted email is routed to GitHub auth.
+- Admin routes are inaccessible to non-admin users.
+
+Tip: if you create Vercel preview environments, keep OAuth callback and `NEXTAUTH_URL` aligned with the target domain you are testing.
+
+## Adding Admins
+
+- Add/remove emails in `ADMIN_EMAILS` (comma-separated).
+- Restart/redeploy so env var changes are applied.
+- Each admin must sign in with a GitHub account whose email matches an allowlisted email.
+- Admins do not need their own OAuth app; one app configuration is shared by the project.
+
+## Database Workflow
 
 ```bash
 bun run db:generate
 bun run db:push
 ```
 
-- Define and update tables in `server/db/schema.ts`.
-- Generate SQL migrations into `drizzle/` (committed to source control).
-- Push schema changes to your MySQL instance from code.
-- Run `db:push` any time you add or change columns before testing locally.
-
-## TODO
-
-### Customer-Facing (High Priority)
-- [ ] **Cross-device order notifications** — persist notification dismiss state server-side if users should retain it across browsers/devices.
-
-### Admin Track
-- [ ] **Admin menu management** — CRUD UI for menu items (currently hardcoded in `features/menu/menu.data.ts`).
-
-### Infrastructure / Polish
-- [ ] **Reservation form submission** — the form exists at `/reservation` but does not submit anywhere yet.
-- [ ] **Cart persistence** — hydrate `CartContext` from `localStorage` so active cart/orders survive a page refresh.
-- [ ] **Auth for admin mode** — replace env-only admin gating with real auth/role checks.
-
-### Completed
-- [x] Production persistence for orders using Drizzle + MySQL (`server/db/schema.ts`, `server/repositories/orders-repository.ts`).
-- [x] Admin cancel note — admin can optionally provide a reason when cancelling an order; customer sees it in the top notification and order detail.
-- [x] Orders API (`/api/orders`, `/api/orders/[ref]`) with full CRUD backed by MySQL.
-- [x] Checkout, confirmation, and customer order pages switched to API-backed order data via `hooks/useOrdersApi.ts`.
-- [x] Admin test mode gate using `ADMIN_TEST_MODE=true`.
-- [x] Header admin navigation is only visible when admin test mode is enabled.
-- [x] Admin orders workflow view with status controls and scroll/fade behavior.
-- [x] In-progress ETA selection in admin (`15/30/45/60+ minutes`) and ETA persistence on orders.
-- [x] Customer-facing ETA visibility in order history, order details, and top progress notification.
-- [x] Dismissible top order progress notification with quick link to the specific active order.
-- [x] Browser-local "remove from history" behavior for customer and admin views (does not delete shared order records).
-- [x] Online ordering system — order-based cart (`features/cart`) with `pendingLines` → `placeOrder` flow.
-- [x] Shopping cart component and cart state management (`features/cart/CartContext.tsx`).
-- [x] "Add to Order" on menu items with confirmation modal, drink suggestions, qty controls.
-- [x] `/cart` route to review placed orders before checkout.
-- [x] `/checkout` route with contact info, fulfillment toggle, payment selection, and order summary.
-- [x] `/order-confirmation` route with placed-order summary and reference number.
-- [x] Browser-persisted order history using `features/checkout/OrderHistoryContext.tsx`.
-- [x] `/orders` route to review recent orders with status, remake, cancel, and remove-from-history actions.
-- [x] `/orders/[ref]` route to inspect a single order in detail.
-- [x] Remake-order flow that copies a previous order back into the cart and routes to checkout.
-- [x] Pending-order cancellation flow.
-- [x] Reusable in-app confirmation modal for order actions.
-- [x] `CartMiniBar` sticky header bar shown whenever active orders exist.
-- [x] Build customer menu page with two-column sidebar layout (McDonald's style).
-- [x] Add `/menu` route under `app/(public)/menu/page.tsx`.
-- [x] Add reusable `MenuGrid` and `MenuCard` components under `components/customer`.
-- [x] Add menu data model in `features/menu` and wire to UI.
-- [x] Link homepage CTA/navbar to menu page.
-- [x] Set up homepage (MUI-based customer landing page with navbar, hero section, featured menu preview, and footer).
-- [x] Create customer route structure under `app/(public)`.
-- [x] Add shared layout components in `components/shared` (navigation and footer).
-- [x] Build reservation page flow in MUI.
-- [x] Scaffold admin pages under `app/(admin)/admin`.
+- Update tables in `server/db/schema.ts`.
+- Generate migration SQL into `drizzle/`.
+- Run `db:push` whenever schema columns change.
 
 ## Notes
 
-- The `TastyIgniter-reference` folder is a Laravel/PHP restaurant ordering system used as a UX/domain reference and is ignored from commits.
-- We are rebuilding features in modern Next.js + MUI rather than copying PHP implementation details.
+- `TastyIgniter-reference` is kept only as a UX/domain reference and is ignored from commits.
+- This project rebuilds features in modern Next.js + MUI rather than reusing PHP implementation details.
 

@@ -39,6 +39,13 @@ yarn-error.log*
 # vercel
 .vercel
 
+# local editor/tooling
+.vscode/
+.idea/
+/.turbo/
+*.swp
+*.swo
+
 # drizzle
 .drizzle-studio-cache/
 

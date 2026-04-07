@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { deleteOrder, getOrder, updateOrderStatus } from "@/server/repositories/orders-repository";
+import { deleteOrder, dismissOrderNotification, getOrder, updateOrderStatus } from "@/server/repositories/orders-repository";
 import type { CancellationActor, OrderEtaMinutes, OrderStatus } from "@/features/checkout/checkout.types";
 import { isValidOrderEtaMinutes } from "@/features/checkout/order-status";
 
@@ -39,6 +39,18 @@ export async function PATCH(request: Request, context: OrderRouteContext) {
   const existingOrder = await getOrder(ref);
   if (!existingOrder) {
     return NextResponse.json({ error: "Order not found." }, { status: 404 });
+  }
+
+  // Dismiss notification — separate lightweight operation, no status validation needed
+  const notificationDismissed =
+    body && typeof body === "object" ? (body as { notificationDismissed?: unknown }).notificationDismissed : undefined;
+  if (notificationDismissed === true) {
+    const dismissed = await dismissOrderNotification(ref);
+    if (!dismissed) {
+      return NextResponse.json({ error: "Order not found." }, { status: 404 });
+    }
+
+    return NextResponse.json(dismissed);
   }
 
   if (!isOrderStatus(status)) {

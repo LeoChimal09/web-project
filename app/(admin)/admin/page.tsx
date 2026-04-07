@@ -9,6 +9,7 @@ import Container from "@mui/material/Container";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import Link from "next/link";
+import AdminSignOutButton from "@/components/auth/AdminSignOutButton";
 
 const modules = [
   {
@@ -16,10 +17,6 @@ const modules = [
     description: "Review mock orders and move them through the test status workflow.",
     href: "/admin/orders",
     cta: "Open Orders",
-  },
-  {
-    name: "Reservations",
-    description: "Planned module from the reference workflow.",
   },
   {
     name: "Menu",
@@ -58,6 +55,9 @@ export default function AdminDashboardPage() {
         <Typography color="text.secondary">
           Initial scaffold for the restaurant staff experience. Each module will be implemented as a dedicated route.
         </Typography>
+        <Stack direction="row" justifyContent="flex-start" sx={{ pt: 1 }}>
+          <AdminSignOutButton />
+        </Stack>
       </Stack>
 
       <Box

@@ -18,6 +18,60 @@ type ApiError = {
   error?: string;
 };
 
+const OWNED_ORDER_REFS_KEY = "tablestory_owned_order_refs";
+const LEGACY_ORDER_HISTORY_KEY = "tablestory_order_history";
+
+function getOwnedOrderRefs(): string[] {
+  if (typeof window === "undefined") return [];
+
+  try {
+    const raw = localStorage.getItem(OWNED_ORDER_REFS_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw) as unknown;
+      if (Array.isArray(parsed)) {
+        return parsed.filter((value): value is string => typeof value === "string");
+      }
+    }
+
+    // One-time fallback for older builds that stored full order history locally.
+    const legacyRaw = localStorage.getItem(LEGACY_ORDER_HISTORY_KEY);
+    if (!legacyRaw) return [];
+    const legacyParsed = JSON.parse(legacyRaw) as unknown;
+    if (!Array.isArray(legacyParsed)) return [];
+
+    const refs = legacyParsed
+      .map((order) => (typeof order === "object" && order !== null ? (order as { ref?: unknown }).ref : undefined))
+      .filter((ref): ref is string => typeof ref === "string");
+
+    if (refs.length > 0) {
+      localStorage.setItem(OWNED_ORDER_REFS_KEY, JSON.stringify(refs));
+    }
+
+    return refs;
+  } catch {
+    return [];
+  }
+}
+
+function addOwnedOrderRef(ref: string) {
+  if (typeof window === "undefined") return;
+
+  const refs = getOwnedOrderRefs();
+  if (refs.includes(ref)) return;
+  localStorage.setItem(OWNED_ORDER_REFS_KEY, JSON.stringify([ref, ...refs]));
+}
+
+function getOrdersListUrl() {
+  const refs = getOwnedOrderRefs();
+  if (refs.length === 0) {
+    return "/api/orders";
+  }
+
+  const params = new URLSearchParams();
+  params.set("refs", refs.join(","));
+  return `/api/orders?${params.toString()}`;
+}
+
 async function parseApiResponse<T>(response: Response): Promise<T> {
   if (response.ok) {
     if (response.status === 204) {
@@ -53,7 +107,7 @@ export function useOrdersApi(options: UseOrdersApiOptions = {}) {
         setOrder(nextOrder);
         setOrders([]);
       } else {
-        const nextOrders = await fetch("/api/orders", { cache: "no-store" }).then(parseApiResponse<PlacedOrder[]>);
+        const nextOrders = await fetch(getOrdersListUrl(), { cache: "no-store" }).then(parseApiResponse<PlacedOrder[]>);
         setOrders(nextOrders);
         setOrder(null);
       }
@@ -79,6 +133,7 @@ export function useOrdersApi(options: UseOrdersApiOptions = {}) {
       body: JSON.stringify(input),
     }).then(parseApiResponse<PlacedOrder>);
 
+    addOwnedOrderRef(createdOrder.ref);
     setOrders((prev) => [createdOrder, ...prev]);
     setOrder((prev) => (prev?.ref === createdOrder.ref ? createdOrder : prev));
     return createdOrder;
@@ -135,6 +190,19 @@ export function useOrdersApi(options: UseOrdersApiOptions = {}) {
     setOrders((prev) => prev.filter((entry) => entry.ref !== orderRef));
   }, []);
 
+  const dismissNotification = useCallback(
+    async (orderRef: string) => {
+      const updated = await fetch(`/api/orders/${orderRef}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ notificationDismissed: true }),
+      }).then(parseApiResponse<PlacedOrder>);
+
+      return updateOrder(updated);
+    },
+    [updateOrder],
+  );
+
   return {
     orders,
     order,
@@ -144,5 +212,6 @@ export function useOrdersApi(options: UseOrdersApiOptions = {}) {
     createOrder,
     updateOrderStatus,
     deleteOrder,
+    dismissNotification,
   };
 }
