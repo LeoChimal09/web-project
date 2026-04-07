@@ -14,23 +14,24 @@ import DeliveryDiningIcon from "@mui/icons-material/DeliveryDining";
 import StorefrontIcon from "@mui/icons-material/Storefront";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
-import { useOrderHistory } from "@/features/checkout/OrderHistoryContext";
-import type { PlacedOrder } from "@/features/checkout/checkout.types";
+import { useOrdersApi } from "@/hooks/useOrdersApi";
 
 export default function OrderConfirmationPage() {
   const params = useSearchParams();
   const ref = params.get("ref");
-  const { getOrder } = useOrderHistory();
-  const [order, setOrder] = useState<PlacedOrder | null>(null);
-  const [notFound, setNotFound] = useState(false);
+  const { order, loading, error } = useOrdersApi({ ref, enabled: Boolean(ref) });
 
-  useEffect(() => {
-    if (!ref) { setNotFound(true); return; }
-    const found = getOrder(ref);
-    if (found) setOrder(found);
-    else setNotFound(true);
-  }, [ref, getOrder]);
+  const notFound = !ref || (!loading && !order);
+
+  if (loading) {
+    return (
+      <Box sx={{ background: "linear-gradient(180deg, rgba(247,241,232,1) 0%, rgba(143,45,31,0.04) 100%)" }}>
+        <Container maxWidth="sm" sx={{ py: { xs: 4, md: 8 }, textAlign: "center" }}>
+          <Typography color="text.secondary">Loading order...</Typography>
+        </Container>
+      </Box>
+    );
+  }
 
   if (notFound) {
     return (
@@ -39,7 +40,7 @@ export default function OrderConfirmationPage() {
           <Stack spacing={3}>
             <Typography variant="h4">Order not found</Typography>
             <Typography color="text.secondary">
-              This confirmation link may have expired or is invalid.
+              {error ?? "This confirmation link may have expired or is invalid."}
             </Typography>
             <Button variant="contained" LinkComponent={Link} href="/menu" sx={{ mx: "auto" }}>
               Back to Menu

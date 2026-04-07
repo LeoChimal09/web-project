@@ -16,8 +16,8 @@ import { useRouter } from "next/navigation";
 import { use, useState } from "react";
 import ConfirmActionDialog from "@/components/shared/ConfirmActionDialog";
 import { useCart } from "@/features/cart/CartContext";
-import { useOrderHistory } from "@/features/checkout/OrderHistoryContext";
 import type { OrderStatus } from "@/features/checkout/checkout.types";
+import { useOrdersApi } from "@/hooks/useOrdersApi";
 
 const STATUS_CONFIG: Record<OrderStatus, { label: string; color: "default" | "warning" | "info" | "success" | "error"; description: string }> = {
   pending:     { label: "Pending",     color: "default",  description: "We've received your order and are getting it ready." },
@@ -29,10 +29,9 @@ const STATUS_CONFIG: Record<OrderStatus, { label: string; color: "default" | "wa
 
 export default function OrderDetailPage({ params }: { params: Promise<{ ref: string }> }) {
   const { ref } = use(params);
-  const { getOrder, cancelOrder } = useOrderHistory();
   const { cart, remakeOrder } = useCart();
   const router = useRouter();
-  const order = getOrder(ref);
+  const { order, loading, error, updateOrderStatus } = useOrdersApi({ ref });
   const [confirmState, setConfirmState] = useState<{
     open: boolean;
     title: string;
@@ -49,6 +48,16 @@ export default function OrderDetailPage({ params }: { params: Promise<{ ref: str
     onConfirm: () => {},
   });
 
+  if (loading) {
+    return (
+      <Box sx={{ background: "linear-gradient(180deg, rgba(247,241,232,1) 0%, rgba(143,45,31,0.04) 100%)" }}>
+        <Container maxWidth="sm" sx={{ py: { xs: 4, md: 8 }, textAlign: "center" }}>
+          <Typography color="text.secondary">Loading order...</Typography>
+        </Container>
+      </Box>
+    );
+  }
+
   if (!order) {
     return (
       <Box sx={{ background: "linear-gradient(180deg, rgba(247,241,232,1) 0%, rgba(143,45,31,0.04) 100%)" }}>
@@ -56,7 +65,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ ref: str
           <Stack spacing={3}>
             <Typography variant="h4">Order not found</Typography>
             <Typography color="text.secondary">
-              This order may have been cleared from your browser history.
+              {error ?? "This order may have been cleared from your browser history."}
             </Typography>
             <Button variant="contained" LinkComponent={Link} href="/orders" sx={{ mx: "auto" }}>
               Back to My Orders
@@ -277,8 +286,8 @@ export default function OrderDetailPage({ params }: { params: Promise<{ ref: str
                     description: "This order is still pending, so it can be cancelled now. It will remain visible in your history.",
                     confirmLabel: "Cancel Order",
                     confirmColor: "error",
-                    onConfirm: () => {
-                      cancelOrder(order.ref);
+                    onConfirm: async () => {
+                      await updateOrderStatus(order.ref, "cancelled");
                       setConfirmState((prev) => ({ ...prev, open: false }));
                     },
                   })

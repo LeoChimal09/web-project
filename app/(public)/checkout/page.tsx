@@ -23,7 +23,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useCart } from "@/features/cart/CartContext";
-import { useOrderHistory } from "@/features/checkout/OrderHistoryContext";
+import { useOrdersApi } from "@/hooks/useOrdersApi";
 import type { CheckoutForm, FulfillmentType, PaymentMethod } from "@/features/checkout/checkout.types";
 
 const EMPTY_FORM: CheckoutForm = {
@@ -59,11 +59,13 @@ function validate(form: CheckoutForm): FieldErrors {
 
 export default function CheckoutPage() {
   const { cart, clearCart } = useCart();
-  const { addOrder } = useOrderHistory();
   const router = useRouter();
+  const { createOrder } = useOrdersApi({ enabled: false });
   const [form, setForm] = useState<CheckoutForm>(EMPTY_FORM);
   const [errors, setErrors] = useState<FieldErrors>({});
   const [submitted, setSubmitted] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const tax = cart.totalPrice * 0.08;
   const total = cart.totalPrice + tax;
@@ -94,26 +96,36 @@ export default function CheckoutPage() {
     };
   }
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const errs = validate(form);
     if (Object.keys(errs).length > 0) {
       setErrors(errs);
       return;
     }
-    const ref = `TBL-${Date.now().toString(36).toUpperCase()}`;
-    const placed = {
-      ref,
-      placedAt: new Date().toISOString(),
-      status: "pending" as const,
-      form,
-      orders: cart.orders,
-      totalPrice: cart.totalPrice,
-    };
-    addOrder(placed);
-    setSubmitted(true);
-    clearCart();
-    router.push(`/order-confirmation?ref=${ref}`);
+
+    setSubmitError(null);
+    setIsSubmitting(true);
+
+    try {
+      const placed = await createOrder({
+        form,
+        orders: cart.orders,
+        totalPrice: cart.totalPrice,
+      });
+
+      setSubmitted(true);
+      clearCart();
+      router.push(`/order-confirmation?ref=${placed.ref}`);
+    } catch (submitRequestError) {
+      setSubmitError(
+        submitRequestError instanceof Error
+          ? submitRequestError.message
+          : "Unable to place order right now.",
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -321,6 +333,7 @@ export default function CheckoutPage() {
 
                 {/* 5. Terms + Submit */}
                 <Stack spacing={1}>
+                  {submitError && <FormHelperText error>{submitError}</FormHelperText>}
                   <FormControlLabel
                     control={
                       <Checkbox
@@ -335,8 +348,8 @@ export default function CheckoutPage() {
                       {errors.termsAgreed}
                     </FormHelperText>
                   )}
-                  <Button type="submit" variant="contained" size="large" fullWidth sx={{ mt: 1 }}>
-                    Place Order
+                  <Button type="submit" variant="contained" size="large" fullWidth sx={{ mt: 1 }} disabled={isSubmitting}>
+                    {isSubmitting ? "Placing Order..." : "Place Order"}
                   </Button>
                 </Stack>
               </Stack>

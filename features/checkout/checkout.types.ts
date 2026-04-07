@@ -23,7 +23,6 @@ export type CheckoutForm = {
 
 export type OrderStatus = "pending" | "in_progress" | "ready" | "completed" | "cancelled";
 
-/** Stored in localStorage as part of order history */
 export type PlacedOrder = {
   ref: string;
   placedAt: string; // ISO string
@@ -32,3 +31,5 @@ export type PlacedOrder = {
   orders: import("@/features/cart/cart.types").OrderEntry[];
   totalPrice: number;
 };
+
+export type CreateOrderInput = Pick<PlacedOrder, "form" | "orders" | "totalPrice">;

@@ -15,8 +15,8 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import ConfirmActionDialog from "@/components/shared/ConfirmActionDialog";
 import { useCart } from "@/features/cart/CartContext";
-import { useOrderHistory } from "@/features/checkout/OrderHistoryContext";
 import type { OrderStatus } from "@/features/checkout/checkout.types";
+import { useOrdersApi } from "@/hooks/useOrdersApi";
 
 const STATUS_CONFIG: Record<OrderStatus, { label: string; color: "default" | "warning" | "info" | "success" | "error" }> = {
   pending:    { label: "Pending",     color: "default"  },
@@ -27,8 +27,8 @@ const STATUS_CONFIG: Record<OrderStatus, { label: string; color: "default" | "wa
 };
 
 export default function OrdersPage() {
-  const { orders, cancelOrder, removeFromHistory } = useOrderHistory();
   const { cart, remakeOrder } = useCart();
+  const { orders, loading, error, updateOrderStatus, deleteOrder } = useOrdersApi();
   const router = useRouter();
   const showOverflowMask = orders.length > 3;
   const scrollRef = useRef<HTMLDivElement | null>(null);
@@ -92,6 +92,32 @@ export default function OrdersPage() {
     router.push("/checkout");
   };
 
+  if (loading) {
+    return (
+      <Box sx={{ background: "linear-gradient(180deg, rgba(247,241,232,1) 0%, rgba(143,45,31,0.04) 100%)" }}>
+        <Container maxWidth="sm" sx={{ py: { xs: 4, md: 8 }, textAlign: "center" }}>
+          <Typography color="text.secondary">Loading orders...</Typography>
+        </Container>
+      </Box>
+    );
+  }
+
+  if (error) {
+    return (
+      <Box sx={{ background: "linear-gradient(180deg, rgba(247,241,232,1) 0%, rgba(143,45,31,0.04) 100%)" }}>
+        <Container maxWidth="sm" sx={{ py: { xs: 4, md: 8 }, textAlign: "center" }}>
+          <Stack spacing={3}>
+            <Typography variant="h4">Unable to load orders</Typography>
+            <Typography color="text.secondary">{error}</Typography>
+            <Button variant="contained" LinkComponent={Link} href="/menu" sx={{ mx: "auto" }}>
+              Back to Menu
+            </Button>
+          </Stack>
+        </Container>
+      </Box>
+    );
+  }
+
   if (orders.length === 0) {
     return (
       <Box sx={{ background: "linear-gradient(180deg, rgba(247,241,232,1) 0%, rgba(143,45,31,0.04) 100%)" }}>
@@ -152,8 +178,8 @@ export default function OrdersPage() {
                           description: "This only removes the order from your browser history list. It will not affect any submitted order.",
                           confirmLabel: "Remove",
                           confirmColor: "error",
-                          onConfirm: () => {
-                            removeFromHistory(order.ref);
+                          onConfirm: async () => {
+                            await deleteOrder(order.ref);
                             setConfirmState((prev) => ({ ...prev, open: false }));
                           },
                         })
@@ -222,8 +248,8 @@ export default function OrdersPage() {
                                   description: "This order is still pending, so it can be cancelled now. You will still keep it in your order history.",
                                   confirmLabel: "Cancel Order",
                                   confirmColor: "error",
-                                  onConfirm: () => {
-                                    cancelOrder(order.ref);
+                                  onConfirm: async () => {
+                                    await updateOrderStatus(order.ref, "cancelled");
                                     setConfirmState((prev) => ({ ...prev, open: false }));
                                   },
                                 })
