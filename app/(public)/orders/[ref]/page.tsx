@@ -16,7 +16,9 @@ import { useRouter } from "next/navigation";
 import { use, useState } from "react";
 import ConfirmActionDialog from "@/components/shared/ConfirmActionDialog";
 import { useCart } from "@/features/cart/CartContext";
+import { formatOrderTimestamp } from "@/features/checkout/order-format";
 import type { OrderStatus } from "@/features/checkout/checkout.types";
+import { formatOrderEtaMinutes } from "@/features/checkout/order-status";
 import { useOrdersApi } from "@/hooks/useOrdersApi";
 
 const STATUS_CONFIG: Record<OrderStatus, { label: string; color: "default" | "warning" | "info" | "success" | "error"; description: string }> = {
@@ -125,14 +127,21 @@ export default function OrderDetailPage({ params }: { params: Promise<{ ref: str
               <Chip label={status.label} color={status.color} />
             </Stack>
             <Typography color="text.secondary">
-              Placed {new Date(order.placedAt).toLocaleString()}
+              Placed {formatOrderTimestamp(order.placedAt)}
             </Typography>
           </Stack>
 
           {/* Status card */}
           <Card variant="outlined" sx={{ borderColor: `${status.color}.main` }}>
             <CardContent>
-              <Typography variant="body1">{status.description}</Typography>
+              <Stack spacing={0.5}>
+                <Typography variant="body1">{status.description}</Typography>
+                {order.status === "in_progress" && order.etaMinutes && (
+                  <Typography variant="body2" color="warning.main" sx={{ fontWeight: 700 }}>
+                    Estimated time: {formatOrderEtaMinutes(order.etaMinutes)}
+                  </Typography>
+                )}
+              </Stack>
             </CardContent>
           </Card>
 

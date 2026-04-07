@@ -15,8 +15,12 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import ConfirmActionDialog from "@/components/shared/ConfirmActionDialog";
 import { useCart } from "@/features/cart/CartContext";
+import { formatOrderTimestamp } from "@/features/checkout/order-format";
 import type { OrderStatus } from "@/features/checkout/checkout.types";
+import { canRemoveOrderFromHistory, formatOrderEtaMinutes } from "@/features/checkout/order-status";
 import { useOrdersApi } from "@/hooks/useOrdersApi";
+
+const HIDDEN_ORDER_HISTORY_KEY = "tablestory_hidden_order_history";
 
 const STATUS_CONFIG: Record<OrderStatus, { label: string; color: "default" | "warning" | "info" | "success" | "error" }> = {
   pending:    { label: "Pending",     color: "default"  },
@@ -28,11 +32,11 @@ const STATUS_CONFIG: Record<OrderStatus, { label: string; color: "default" | "wa
 
 export default function OrdersPage() {
   const { cart, remakeOrder } = useCart();
-  const { orders, loading, error, updateOrderStatus, deleteOrder } = useOrdersApi();
+  const { orders, loading, error, updateOrderStatus } = useOrdersApi();
   const router = useRouter();
-  const showOverflowMask = orders.length > 3;
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const [showBottomFade, setShowBottomFade] = useState(false);
+  const [hiddenOrderRefs, setHiddenOrderRefs] = useState<string[]>([]);
   const [confirmState, setConfirmState] = useState<{
     open: boolean;
     title: string;
@@ -48,6 +52,25 @@ export default function OrdersPage() {
     confirmColor: "primary",
     onConfirm: () => {},
   });
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(HIDDEN_ORDER_HISTORY_KEY);
+      if (!raw) {
+        return;
+      }
+
+      const parsed = JSON.parse(raw) as unknown;
+      if (Array.isArray(parsed)) {
+        setHiddenOrderRefs(parsed.filter((value): value is string => typeof value === "string"));
+      }
+    } catch {
+      localStorage.removeItem(HIDDEN_ORDER_HISTORY_KEY);
+    }
+  }, []);
+
+  const visibleOrders = orders.filter((order) => !hiddenOrderRefs.includes(order.ref));
+  const showOverflowMask = visibleOrders.length > 3;
 
   useEffect(() => {
     const el = scrollRef.current;
@@ -69,7 +92,7 @@ export default function OrdersPage() {
       el.removeEventListener("scroll", updateFade);
       window.removeEventListener("resize", updateFade);
     };
-  }, [orders.length, showOverflowMask]);
+  }, [showOverflowMask, visibleOrders.length]);
 
   const handleRemakeOrder = (orderOrders: typeof orders[number]["orders"]) => {
     if (cart.totalOrders > 0) {
@@ -118,13 +141,17 @@ export default function OrdersPage() {
     );
   }
 
-  if (orders.length === 0) {
+  if (visibleOrders.length === 0) {
     return (
       <Box sx={{ background: "linear-gradient(180deg, rgba(247,241,232,1) 0%, rgba(143,45,31,0.04) 100%)" }}>
         <Container maxWidth="sm" sx={{ py: { xs: 4, md: 8 }, textAlign: "center" }}>
           <Stack spacing={3}>
             <Typography variant="h3">My Orders</Typography>
-            <Typography color="text.secondary">You haven&apos;t placed any orders yet.</Typography>
+            <Typography color="text.secondary">
+              {orders.length === 0
+                ? "You haven&apos;t placed any orders yet."
+                : "No orders are currently visible in your browser history."}
+            </Typography>
             <Button variant="contained" LinkComponent={Link} href="/menu" sx={{ mx: "auto" }}>
               Start an Order
             </Button>
@@ -152,8 +179,9 @@ export default function OrdersPage() {
               }}
             >
               <Stack spacing={2}>
-              {orders.map((order) => {
+              {visibleOrders.map((order) => {
                 const status = STATUS_CONFIG[order.status];
+                const canRemove = canRemoveOrderFromHistory(order.status);
                 const itemCount = order.orders.reduce((s, o) => s + o.lines.reduce((ls, l) => ls + l.cartQuantity, 0), 0);
                 const tax = order.totalPrice * 0.08;
                 return (
@@ -167,28 +195,38 @@ export default function OrdersPage() {
                       transition: "border-color 0.15s, background-color 0.15s",
                     }}
                   >
-                    <IconButton
-                      aria-label={`Remove ${order.ref} from history`}
-                      size="small"
-                      sx={{ position: "absolute", top: 10, right: 10, zIndex: 1 }}
-                      onClick={() =>
-                        setConfirmState({
-                          open: true,
-                          title: "Remove order from history?",
-                          description: "This only removes the order from your browser history list. It will not affect any submitted order.",
-                          confirmLabel: "Remove",
-                          confirmColor: "error",
-                          onConfirm: async () => {
-                            await deleteOrder(order.ref);
-                            setConfirmState((prev) => ({ ...prev, open: false }));
-                          },
-                        })
-                      }
-                    >
-                      <CloseIcon fontSize="small" />
-                    </IconButton>
+                    {canRemove && (
+                      <IconButton
+                        aria-label={`Remove ${order.ref} from history`}
+                        size="small"
+                        sx={{ position: "absolute", top: 10, right: 10, zIndex: 1 }}
+                        onClick={() =>
+                          setConfirmState({
+                            open: true,
+                            title: "Remove order from history?",
+                            description: "This only removes the order from your browser history list. It will not affect any submitted order.",
+                            confirmLabel: "Remove",
+                            confirmColor: "error",
+                            onConfirm: () => {
+                              setHiddenOrderRefs((prev) => {
+                                if (prev.includes(order.ref)) {
+                                  return prev;
+                                }
 
-                    <CardContent sx={{ pr: 6 }}>
+                                const next = [...prev, order.ref];
+                                localStorage.setItem(HIDDEN_ORDER_HISTORY_KEY, JSON.stringify(next));
+                                return next;
+                              });
+                              setConfirmState((prev) => ({ ...prev, open: false }));
+                            },
+                          })
+                        }
+                      >
+                        <CloseIcon fontSize="small" />
+                      </IconButton>
+                    )}
+
+                    <CardContent sx={{ pr: canRemove ? 6 : 2 }}>
                       <Stack spacing={1.5}>
                         <Stack
                           direction={{ xs: "column", sm: "row" }}
@@ -208,10 +246,15 @@ export default function OrdersPage() {
                               />
                             </Stack>
                             <Typography variant="body2" color="text.secondary">
-                              {new Date(order.placedAt).toLocaleString()} &middot;{" "}
+                              {formatOrderTimestamp(order.placedAt)} &middot;{" "}
                               {itemCount} item{itemCount !== 1 ? "s" : ""} &middot;{" "}
                               {order.form.fulfillment === "delivery" ? "Delivery" : "Pickup"}
                             </Typography>
+                            {order.status === "in_progress" && order.etaMinutes && (
+                              <Typography variant="caption" color="warning.main" sx={{ fontWeight: 700 }}>
+                                Estimated time: {formatOrderEtaMinutes(order.etaMinutes)}
+                              </Typography>
+                            )}
                           </Stack>
                           <Stack alignItems={{ xs: "flex-start", sm: "flex-end" }} spacing={0.25}>
                             <Typography variant="body1" sx={{ fontWeight: 700, color: "primary.main" }}>

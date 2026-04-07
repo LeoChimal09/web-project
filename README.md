@@ -59,6 +59,7 @@ components/
 - `/orders/[ref]` -> single order detail/status page
 - `/reservation` -> customer reservation form (MUI scaffold)
 - `/admin` -> admin dashboard scaffold
+- `/admin/orders` -> test-only admin orders view
 
 ## Getting Started
 
@@ -85,6 +86,14 @@ Lint:
 ```bash
 bun run lint
 ```
+
+Admin test mode:
+
+```bash
+ADMIN_TEST_MODE=true
+```
+
+Set that in your `.env` file to enable admin-only routes during local testing.
 
 ## TODO
 

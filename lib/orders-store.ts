@@ -1,4 +1,5 @@
-import type { CreateOrderInput, OrderStatus, PlacedOrder } from "@/features/checkout/checkout.types";
+import type { CreateOrderInput, OrderEtaMinutes, OrderStatus, PlacedOrder } from "@/features/checkout/checkout.types";
+import { canRemoveOrderFromHistory, canTransitionOrderStatus } from "@/features/checkout/order-status";
 
 declare global {
   var __tablestoryOrdersStore: Map<string, PlacedOrder> | undefined;
@@ -31,6 +32,7 @@ export function createOrder(input: CreateOrderInput) {
     ref: generateOrderRef(),
     placedAt: new Date().toISOString(),
     status: "pending",
+    etaMinutes: null,
     form: input.form,
     orders: input.orders,
     totalPrice: input.totalPrice,
@@ -40,17 +42,36 @@ export function createOrder(input: CreateOrderInput) {
   return order;
 }
 
-export function updateOrderStatus(ref: string, status: OrderStatus) {
+export function updateOrderStatus(ref: string, status: OrderStatus, options?: { etaMinutes?: OrderEtaMinutes | null }) {
   const existing = orderStore.get(ref);
   if (!existing) {
     return undefined;
   }
 
-  const updated: PlacedOrder = { ...existing, status };
+  if (!canTransitionOrderStatus(existing.status, status)) {
+    return null;
+  }
+
+  const nextEta =
+    status === "in_progress"
+      ? (options?.etaMinutes ?? existing.etaMinutes ?? null)
+      : existing.etaMinutes ?? null;
+
+  const updated: PlacedOrder = { ...existing, status, etaMinutes: nextEta };
   orderStore.set(ref, updated);
   return updated;
 }
 
 export function deleteOrder(ref: string) {
-  return orderStore.delete(ref);
+  const existing = orderStore.get(ref);
+  if (!existing) {
+    return undefined;
+  }
+
+  if (!canRemoveOrderFromHistory(existing.status)) {
+    return null;
+  }
+
+  orderStore.delete(ref);
+  return true;
 }

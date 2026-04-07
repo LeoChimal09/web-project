@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import type { CreateOrderInput, OrderStatus, PlacedOrder } from "@/features/checkout/checkout.types";
+import type { CreateOrderInput, OrderEtaMinutes, OrderStatus, PlacedOrder } from "@/features/checkout/checkout.types";
 
 type UseOrdersApiOptions = {
   ref?: string | null;
@@ -84,11 +84,13 @@ export function useOrdersApi(options: UseOrdersApiOptions = {}) {
     return nextOrder;
   }, []);
 
-  const updateOrderStatus = useCallback(async (orderRef: string, status: OrderStatus) => {
+  const updateOrderStatus = useCallback(async (orderRef: string, status: OrderStatus, etaMinutes?: OrderEtaMinutes) => {
     const updatedOrder = await fetch(`/api/orders/${orderRef}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status }),
+      body: JSON.stringify(
+        etaMinutes ? { status, etaMinutes } : { status },
+      ),
     }).then(parseApiResponse<PlacedOrder>);
 
     return updateOrder(updatedOrder);
