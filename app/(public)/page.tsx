@@ -17,12 +17,7 @@ const featuredMenu = [
 
 export default function HomePage() {
   return (
-    <Box
-      sx={{
-        background:
-          "linear-gradient(180deg, rgba(143,45,31,0.08) 0%, rgba(247,241,232,1) 28%, rgba(247,241,232,1) 100%)",
-      }}
-    >
+    <Box sx={{ backgroundColor: "background.default" }}>
       <Container maxWidth="lg" sx={{ py: { xs: 6, md: 10 } }}>
         <Stack spacing={2} sx={{ maxWidth: 720, mb: { xs: 5, md: 8 } }}>
           <Typography variant="overline" color="secondary.main">
@@ -35,9 +30,6 @@ export default function HomePage() {
           <Stack direction={{ xs: "column", sm: "row" }} spacing={2} sx={{ pt: 1 }}>
             <Button variant="contained" size="large" LinkComponent={Link} href="/menu">
               Browse Our Menu
-            </Button>
-            <Button variant="outlined" size="large" LinkComponent={Link} href="/reservation">
-              Reserve a Table
             </Button>
           </Stack>
         </Stack>

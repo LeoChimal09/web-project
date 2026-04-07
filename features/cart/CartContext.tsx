@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, useCallback, useMemo } from "react";
+import { createContext, useContext, useState, useCallback, useMemo, useEffect } from "react";
 import type { MenuItem } from "@/components/customer/MenuCard";
 import type { Cart, CartItem, OrderEntry } from "./cart.types";
 
@@ -17,8 +17,50 @@ type CartContextType = {
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
+const CART_STORAGE_KEY = "tablestory_cart";
+
+function loadCartFromStorage(): OrderEntry[] {
+  try {
+    const raw = localStorage.getItem(CART_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return [];
+    return parsed as OrderEntry[];
+  } catch {
+    return [];
+  }
+}
+
+function saveCartToStorage(orders: OrderEntry[]) {
+  try {
+    if (orders.length === 0) {
+      localStorage.removeItem(CART_STORAGE_KEY);
+    } else {
+      localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(orders));
+    }
+  } catch {
+    // storage quota exceeded or private browsing — silently continue
+  }
+}
+
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [orders, setOrders] = useState<OrderEntry[]>([]);
+  const [hydrated, setHydrated] = useState(false);
+
+  // Hydrate from localStorage after first render (avoids SSR mismatch)
+  useEffect(() => {
+    const saved = loadCartFromStorage();
+    if (saved.length > 0) {
+      setOrders(saved);
+    }
+    setHydrated(true);
+  }, []);
+
+  // Write-through: persist every change after hydration
+  useEffect(() => {
+    if (!hydrated) return;
+    saveCartToStorage(orders);
+  }, [orders, hydrated]);
 
   const placeOrder = useCallback((lines: PendingLine[]) => {
     const cartItems: CartItem[] = lines.map(({ item, quantity }) => ({

@@ -3,6 +3,7 @@
 import CssBaseline from "@mui/material/CssBaseline";
 import { ThemeProvider, createTheme } from "@mui/material/styles";
 import type { ReactNode } from "react";
+import MuiEmotionRegistry from "@/components/shared/MuiEmotionRegistry";
 
 const appTheme = createTheme({
   palette: {
@@ -46,9 +47,11 @@ type MuiThemeProviderProps = {
 
 export default function MuiThemeProvider({ children }: MuiThemeProviderProps) {
   return (
-    <ThemeProvider theme={appTheme}>
-      <CssBaseline />
-      {children}
-    </ThemeProvider>
+    <MuiEmotionRegistry>
+      <ThemeProvider theme={appTheme}>
+        <CssBaseline />
+        {children}
+      </ThemeProvider>
+    </MuiEmotionRegistry>
   );
 }
