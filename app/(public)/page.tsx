@@ -33,11 +33,11 @@ export default function HomePage() {
             We are implementing the reference project structure with a cleaner customer journey and an admin-ready foundation.
           </Typography>
           <Stack direction={{ xs: "column", sm: "row" }} spacing={2} sx={{ pt: 1 }}>
-            <Button variant="contained" size="large" LinkComponent={Link} href="/reservation">
-              Book a Table
+            <Button variant="contained" size="large" LinkComponent={Link} href="/menu">
+              Browse Our Menu
             </Button>
-            <Button variant="outlined" size="large" LinkComponent={Link} href="/admin">
-              View Admin Scaffold
+            <Button variant="outlined" size="large" LinkComponent={Link} href="/reservation">
+              Reserve a Table
             </Button>
           </Stack>
         </Stack>
