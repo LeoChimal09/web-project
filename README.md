@@ -71,12 +71,24 @@ bun run lint
 
 ## TODO
 
-- [ ] Build online ordering system — customers can add items from menu to cart.
-- [ ] Create shopping cart component and cart state management (`features/cart`).
-- [ ] Add "Add to Cart" button on menu items and handle cart interactions.
-- [ ] Build `/cart` route to review order before checkout.
-- [ ] Create checkout flow with customer info and payment selection.
-- [ ] Add order confirmation page and email notification (future).
+### Customer-Facing (High Priority)
+- [ ] **Checkout flow** — `/checkout` page with customer info form (name, contact, delivery/pickup toggle) and payment method selection. The cart page already has a "Proceed to Checkout" button wired for this.
+- [ ] **Order confirmation page** — `/order-confirmation` shown after a successful checkout, with full order summary and a reference number.
+
+### Admin Track
+- [ ] **Admin orders view** — list of placed orders with status workflow (Pending → In Progress → Ready → Completed).
+- [ ] **Admin menu management** — CRUD UI for menu items (currently hardcoded in `features/menu/menu.data.ts`).
+
+### Infrastructure / Polish
+- [ ] **Reservation form submission** — the form exists at `/reservation` but does not submit anywhere yet.
+- [ ] **Cart persistence** — hydrate `CartContext` from `localStorage` so orders survive a page refresh.
+
+### Completed
+- [x] Online ordering system — order-based cart (`features/cart`) with `pendingLines` → `placeOrder` flow.
+- [x] Shopping cart component and cart state management (`features/cart/CartContext.tsx`).
+- [x] "Add to Order" on menu items with confirmation modal, drink suggestions, qty controls.
+- [x] `/cart` route to review placed orders before checkout.
+- [x] `CartMiniBar` sticky header bar shown whenever active orders exist.
 - [x] Build customer menu page with two-column sidebar layout (McDonald's style).
 - [x] Add `/menu` route under `app/(public)/menu/page.tsx`.
 - [x] Add reusable `MenuGrid` and `MenuCard` components under `components/customer`.
@@ -90,7 +102,6 @@ bun run lint
 
 ## Notes
 
-- The `RestaurantProject-reference` folder is a design/flow reference and is ignored from commits.
+- The `TastyIgniter-reference` folder is a Laravel/PHP restaurant ordering system used as a UX/domain reference and is ignored from commits.
 - We are rebuilding features in modern Next.js + MUI rather than copying PHP implementation details.
-- Next focus: online ordering system so customers can order directly from the menu.
 

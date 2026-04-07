@@ -17,6 +17,7 @@ const navItems = [
   { label: "Home", href: "/" },
   { label: "Menu", href: "/menu" },
   { label: "Reservation", href: "/reservation" },
+  { label: "My Orders", href: "/orders" },
   { label: "Admin", href: "/admin" },
 ];
 

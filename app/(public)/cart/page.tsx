@@ -161,7 +161,7 @@ export default function CartPage() {
             <Button variant="outlined" color="error" onClick={clearCart} sx={{ flex: 1 }}>
               Clear All Orders
             </Button>
-            <Button variant="contained" size="large" sx={{ flex: 1 }}>
+            <Button variant="contained" size="large" LinkComponent={Link} href="/checkout" sx={{ flex: 1 }}>
               Proceed to Checkout
             </Button>
           </Stack>

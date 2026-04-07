@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "@/styles/globals.css";
 import MuiThemeProvider from "@/components/shared/MuiThemeProvider";
 import { CartProvider } from "@/features/cart/CartContext";
+import { OrderHistoryProvider } from "@/features/checkout/OrderHistoryContext";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -31,7 +32,9 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col">
         <MuiThemeProvider>
-          <CartProvider>{children}</CartProvider>
+          <CartProvider>
+            <OrderHistoryProvider>{children}</OrderHistoryProvider>
+          </CartProvider>
         </MuiThemeProvider>
       </body>
     </html>
