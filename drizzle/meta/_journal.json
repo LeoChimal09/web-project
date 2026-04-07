@@ -1,0 +1,13 @@
+{
+  "version": "7",
+  "dialect": "mysql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "5",
+      "when": 1775578550451,
+      "tag": "0000_parched_kid_colt",
+      "breakpoints": true
+    }
+  ]
+}

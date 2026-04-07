@@ -17,11 +17,19 @@ const navItems = [
   { label: "Home", href: "/" },
   { label: "Menu", href: "/menu" },
   { label: "Reservation", href: "/reservation" },
-  { label: "Admin", href: "/admin" },
+  { label: "My Orders", href: "/orders" },
 ];
 
-export default function SiteNavbar() {
+type SiteNavbarProps = {
+  showAdmin?: boolean;
+};
+
+export default function SiteNavbar({ showAdmin = false }: SiteNavbarProps) {
   const { cart } = useCart();
+  const items = showAdmin
+    ? [...navItems, { label: "Admin", href: "/admin" }]
+    : navItems;
+
   return (
     <AppBar position="sticky" color="default" elevation={1}>
       <Container maxWidth="lg">
@@ -33,7 +41,7 @@ export default function SiteNavbar() {
             </Typography>
           </Box>
           <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
-            {navItems.map((item) => (
+            {items.map((item) => (
               <Button
                 key={item.href}
                 LinkComponent={Link}

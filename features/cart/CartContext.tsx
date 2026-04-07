@@ -12,6 +12,7 @@ type CartContextType = {
   removeOrder: (orderId: string) => void;
   updateOrderLine: (orderId: string, itemId: string, quantity: number) => void;
   clearCart: () => void;
+  remakeOrder: (sourceOrders: OrderEntry[]) => void;
 };
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -55,13 +56,24 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setOrders([]);
   }, []);
 
+  const remakeOrder = useCallback((sourceOrders: OrderEntry[]) => {
+    const clonedOrders = sourceOrders.map((order, index) => ({
+      ...order,
+      orderId: `${Date.now()}-${index}`,
+      lines: order.lines.map((line) => ({ ...line })),
+      total: order.lines.reduce((sum, line) => sum + line.price * line.cartQuantity, 0),
+    }));
+
+    setOrders(clonedOrders);
+  }, []);
+
   const cart = useMemo<Cart>(() => {
     const totalPrice = orders.reduce((sum, o) => sum + o.total, 0);
     return { orders, totalOrders: orders.length, totalPrice };
   }, [orders]);
 
   return (
-    <CartContext.Provider value={{ cart, placeOrder, removeOrder, updateOrderLine, clearCart }}>
+    <CartContext.Provider value={{ cart, placeOrder, removeOrder, updateOrderLine, clearCart, remakeOrder }}>
       {children}
     </CartContext.Provider>
   );

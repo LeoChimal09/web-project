@@ -18,7 +18,7 @@
 /out/
 
 # local reference repositories
-/RestaurantProject-reference/
+/TastyIgniter-reference/
 
 # production
 /build
@@ -38,6 +38,9 @@ yarn-error.log*
 
 # vercel
 .vercel
+
+# drizzle
+.drizzle-studio-cache/
 
 # typescript
 *.tsbuildinfo

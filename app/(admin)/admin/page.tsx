@@ -1,20 +1,50 @@
 "use client";
 
 import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
 import Card from "@mui/material/Card";
+import CardActions from "@mui/material/CardActions";
 import CardContent from "@mui/material/CardContent";
 import Container from "@mui/material/Container";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
+import Link from "next/link";
 
 const modules = [
-  "Reservations",
-  "Menu",
-  "Tables",
-  "Staff",
-  "Billing",
-  "Reports",
-  "Kitchen",
+  {
+    name: "Orders",
+    description: "Review mock orders and move them through the test status workflow.",
+    href: "/admin/orders",
+    cta: "Open Orders",
+  },
+  {
+    name: "Reservations",
+    description: "Planned module from the reference workflow.",
+  },
+  {
+    name: "Menu",
+    description: "Planned module from the reference workflow.",
+  },
+  {
+    name: "Tables",
+    description: "Planned module from the reference workflow.",
+  },
+  {
+    name: "Staff",
+    description: "Planned module from the reference workflow.",
+  },
+  {
+    name: "Billing",
+    description: "Planned module from the reference workflow.",
+  },
+  {
+    name: "Reports",
+    description: "Planned module from the reference workflow.",
+  },
+  {
+    name: "Kitchen",
+    description: "Planned module from the reference workflow.",
+  },
 ];
 
 export default function AdminDashboardPage() {
@@ -42,13 +72,20 @@ export default function AdminDashboardPage() {
         }}
       >
         {modules.map((module) => (
-          <Card key={module} variant="outlined">
+          <Card key={module.name} variant="outlined">
             <CardContent>
-              <Typography variant="h6">{module}</Typography>
+              <Typography variant="h6">{module.name}</Typography>
               <Typography variant="body2" color="text.secondary">
-                Planned module from the reference workflow.
+                {module.description}
               </Typography>
             </CardContent>
+            {module.href && (
+              <CardActions sx={{ px: 2, pb: 2 }}>
+                <Button variant="contained" LinkComponent={Link} href={module.href}>
+                  {module.cta}
+                </Button>
+              </CardActions>
+            )}
           </Card>
         ))}
       </Box>
