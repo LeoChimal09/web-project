@@ -131,7 +131,7 @@ export default function CheckoutPage() {
   return (
     <Box sx={{ background: "linear-gradient(180deg, rgba(247,241,232,1) 0%, rgba(143,45,31,0.04) 100%)" }}>
       <Container maxWidth="lg" sx={{ py: { xs: 4, md: 8 } }}>
-        <Typography variant="h3" sx={{ mb: 4 }}>
+        <Typography variant="h3" sx={{ mb: 4, fontSize: { xs: "2rem", sm: "2.5rem" } }}>
           Checkout
         </Typography>
 

@@ -121,7 +121,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ ref: str
               ← My Orders
             </Button>
             <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap">
-              <Typography variant="h4" sx={{ fontWeight: 700 }}>
+              <Typography variant="h4" sx={{ fontWeight: 700, fontSize: { xs: "1.55rem", sm: "2.125rem" } }}>
                 {order.ref}
               </Typography>
               <Chip label={status.label} color={status.color} />
@@ -167,8 +167,9 @@ export default function OrderDetailPage({ params }: { params: Promise<{ ref: str
                         {entry.lines.map((line) => (
                           <Stack
                             key={line.id}
-                            direction="row"
+                            direction={{ xs: "column", sm: "row" }}
                             justifyContent="space-between"
+                            alignItems={{ xs: "flex-start", sm: "center" }}
                             sx={{ pl: 1 }}
                           >
                             <Typography variant="body2">

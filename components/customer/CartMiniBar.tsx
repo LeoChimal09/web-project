@@ -19,14 +19,19 @@ export default function CartMiniBar() {
       sx={{
         backgroundColor: "primary.main",
         color: "primary.contrastText",
-        py: 0.75,
+        py: { xs: 0.75, sm: 0.85 },
         position: "sticky",
-        top: 64,
+        top: { xs: 56, sm: 64 },
         zIndex: 1099,
       }}
     >
       <Container maxWidth="lg">
-        <Stack direction="row" justifyContent="space-between" alignItems="center">
+        <Stack
+          direction={{ xs: "column", sm: "row" }}
+          spacing={{ xs: 0.75, sm: 0 }}
+          justifyContent="space-between"
+          alignItems={{ xs: "flex-start", sm: "center" }}
+        >
           <Stack direction="row" spacing={1} alignItems="center">
             <ShoppingBagIcon fontSize="small" />
             <Typography variant="body2" sx={{ fontWeight: 600 }}>
@@ -38,7 +43,12 @@ export default function CartMiniBar() {
             href="/cart"
             size="small"
             variant="outlined"
-            sx={{ color: "inherit", borderColor: "rgba(255,255,255,0.5)", py: 0.25 }}
+            sx={{
+              color: "inherit",
+              borderColor: "rgba(255,255,255,0.5)",
+              py: 0.25,
+              alignSelf: { xs: "stretch", sm: "auto" },
+            }}
           >
             View Order
           </Button>
