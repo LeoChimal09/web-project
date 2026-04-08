@@ -3,8 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "build": "bun scripts/generate-build-info.js && next build",
-    "build:info": "bun scripts/generate-build-info.js",
+    "build": "next build",
+    "build:info": "echo \"No build info script configured\"",
     "check": "eslint . && tsc --noEmit",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
