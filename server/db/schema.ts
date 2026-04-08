@@ -30,3 +30,12 @@ export const customersTable = mysqlTable("customers", {
   name: varchar("name", { length: 255 }).notNull(),
   createdAt: varchar("created_at", { length: 40 }).notNull(),
 });
+
+export const customerEmailVerificationTokensTable = mysqlTable("customer_email_verification_tokens", {
+  id: int("id").autoincrement().primaryKey(),
+  email: varchar("email", { length: 255 }).notNull(),
+  tokenHash: varchar("token_hash", { length: 128 }).notNull().unique(),
+  name: varchar("name", { length: 255 }),
+  expiresAt: varchar("expires_at", { length: 40 }).notNull(),
+  createdAt: varchar("created_at", { length: 40 }).notNull(),
+});

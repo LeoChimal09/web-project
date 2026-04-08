@@ -1,6 +1,6 @@
 "use client";
 
-import GitHubIcon from "@mui/icons-material/GitHub";
+import GoogleIcon from "@mui/icons-material/Google";
 import Button from "@mui/material/Button";
 import Dialog from "@mui/material/Dialog";
 import DialogContent from "@mui/material/DialogContent";
@@ -39,19 +39,19 @@ export default function SignInModal({
             </Typography>
             <Typography variant="h6">Sign in to access the admin area</Typography>
             <Typography variant="body2" color="text.secondary">
-              Only approved GitHub accounts listed in the admin allowlist can
+              Only approved Google accounts listed in the admin allowlist can
               access staff routes.
             </Typography>
             <Button
               variant="contained"
               size="large"
-              startIcon={<GitHubIcon />}
+              startIcon={<GoogleIcon />}
               onClick={() => {
                 setOpen(false);
-                void signIn("github", { callbackUrl });
+                void signIn("google", { callbackUrl });
               }}
             >
-              Sign in with GitHub
+              Sign in with Google
             </Button>
           </Stack>
         </DialogContent>

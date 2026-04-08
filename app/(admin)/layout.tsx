@@ -31,10 +31,10 @@ export default async function AdminLayout({
               </Typography>
               <Typography variant="h4">Admin sign-in required</Typography>
               <Typography color="text.secondary">
-                Sign in with an allowed GitHub account to access admin-only routes.
+                Sign in with an allowed Google account to access admin-only routes.
               </Typography>
               <SignInModal
-                trigger={<Button variant="contained" size="large">Sign in with GitHub</Button>}
+                trigger={<Button variant="contained" size="large">Sign in with Google</Button>}
               />
             </Stack>
           </Container>
