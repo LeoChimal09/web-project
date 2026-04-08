@@ -25,7 +25,9 @@ export default function CartPage() {
       >
         <Container maxWidth="lg" sx={{ py: { xs: 4, md: 8 } }}>
           <Stack spacing={3} sx={{ textAlign: "center" }}>
-            <Typography variant="h3">Your Orders</Typography>
+            <Typography variant="h3" sx={{ fontSize: { xs: "2rem", sm: "2.5rem" } }}>
+              Your Orders
+            </Typography>
             <Typography color="text.secondary">No orders placed yet</Typography>
             <Button
               variant="contained"
@@ -48,7 +50,9 @@ export default function CartPage() {
       <Container maxWidth="lg" sx={{ py: { xs: 4, md: 8 } }}>
         <Stack spacing={4}>
           <Stack spacing={1}>
-            <Typography variant="h3">Your Orders</Typography>
+            <Typography variant="h3" sx={{ fontSize: { xs: "2rem", sm: "2.5rem" } }}>
+              Your Orders
+            </Typography>
             <Typography color="text.secondary">
               {cart.totalOrders} order{cart.totalOrders > 1 ? "s" : ""}
             </Typography>
@@ -58,10 +62,11 @@ export default function CartPage() {
             <Card key={order.orderId} variant="outlined">
               <CardContent>
                 <Stack
-                  direction="row"
+                  direction={{ xs: "column", sm: "row" }}
                   justifyContent="space-between"
-                  alignItems="center"
+                  alignItems={{ xs: "flex-start", sm: "center" }}
                   sx={{ mb: 1.5 }}
+                  spacing={1}
                 >
                   <Stack direction="row" spacing={1} alignItems="center">
                     <Chip label={`Order ${index + 1}`} size="small" color="primary" />
@@ -86,7 +91,11 @@ export default function CartPage() {
                 <Stack spacing={0.75}>
                   {order.lines.map((line, lineIndex) => (
                     <Stack key={line.id}>
-                      <Stack direction="row" alignItems="center" spacing={1}>
+                      <Stack
+                        direction={{ xs: "column", sm: "row" }}
+                        alignItems={{ xs: "flex-start", sm: "center" }}
+                        spacing={1}
+                      >
                         <IconButton
                           size="small"
                           onClick={() =>
@@ -109,14 +118,14 @@ export default function CartPage() {
                         <Typography variant="body2" sx={{ flex: 1 }}>
                           {line.name}
                         </Typography>
-                        <Typography variant="caption" color="text.secondary" sx={{ mr: 0.5 }}>
+                        <Typography variant="caption" color="text.secondary" sx={{ mr: { xs: 0, sm: 0.5 } }}>
                           {line.category}
                         </Typography>
                         <Typography variant="body2" sx={{ fontWeight: 600 }}>
                           ${(line.price * line.cartQuantity).toFixed(2)}
                         </Typography>
                       </Stack>
-                      {lineIndex < order.lines.length - 1 && <Divider sx={{ mt: 0.75, ml: 10 }} />}
+                      {lineIndex < order.lines.length - 1 && <Divider sx={{ mt: 0.75, ml: { xs: 0, sm: 10 } }} />}
                     </Stack>
                   ))}
                 </Stack>

@@ -51,7 +51,9 @@ export default function AdminDashboardPage() {
         <Typography variant="overline" color="secondary.main">
           Admin Area
         </Typography>
-        <Typography variant="h3">Operations Dashboard</Typography>
+        <Typography variant="h3" sx={{ fontSize: { xs: "2rem", sm: "2.5rem" } }}>
+          Operations Dashboard
+        </Typography>
         <Typography color="text.secondary">
           Initial scaffold for the restaurant staff experience. Each module will be implemented as a dedicated route.
         </Typography>

@@ -27,7 +27,7 @@ export default async function PublicLayout({
       <WelcomeModal isAuthenticated={isAuthenticated} />
       <OrderProgressBanner />
       <CartMiniBar />
-      <main style={{ paddingTop: "24px" }}>{children}</main>
+      <main style={{ paddingTop: "clamp(16px, 2.5vw, 24px)" }}>{children}</main>
       <SiteFooter />
     </>
   );

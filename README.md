@@ -1,12 +1,29 @@
 # TableStory Web Project
 
-A modern restaurant web app built with Next.js App Router and MUI, inspired by a legacy restaurant ordering reference flow.
+A modern, mobile-optimized restaurant web app built with Next.js App Router and MUI, inspired by a legacy restaurant ordering reference flow.
+
+## Live Demo
+
+Deployed on Vercel — accessible on both desktop and mobile.
 
 ## Current Scope
 
 - Customer experience under `app/(public)` with menu, cart, checkout, and order tracking.
 - Admin workflow under `app/(admin)` protected by GitHub OAuth + email allowlist.
 - Shared design system with MUI and stable SSR style injection for App Router.
+- Fully responsive UI — works on phones, tablets, and desktop.
+
+## Mobile Support
+
+The UI is built mobile-first with responsive breakpoints throughout:
+
+- **Navbar**: collapses to a hamburger menu drawer on small screens; cart count, sign-in, and sign-out all accessible in the drawer.
+- **Menu page**: category sidebar scrolls horizontally on mobile; order dialog goes full-screen on phones.
+- **Cart page**: line items stack vertically on small screens to avoid cramped rows.
+- **Checkout**: single-column form layout on phones; order summary stacks below the form.
+- **Orders / Order detail**: headings scale down, status rows wrap properly, and detail cards stack for easy reading.
+- **Welcome modal**: goes full-screen on phones for comfortable sign-in/sign-up.
+- **Sticky bars** (CartMiniBar, OrderProgressBanner): stack vertically and adjust `top` offset for the 56px mobile nav height.
 
 ## Tech Stack
 

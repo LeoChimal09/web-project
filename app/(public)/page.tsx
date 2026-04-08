@@ -23,8 +23,13 @@ export default function HomePage() {
           <Typography variant="overline" color="secondary.main">
             Inspired by our restaurant reference flow
           </Typography>
-          <Typography variant="h2">A modern dining experience, rebuilt with MUI.</Typography>
-          <Typography variant="h6" color="text.secondary">
+          <Typography
+            variant="h2"
+            sx={{ fontSize: { xs: "2rem", sm: "2.6rem", md: "3.2rem" }, lineHeight: 1.1 }}
+          >
+            A modern dining experience, rebuilt with MUI.
+          </Typography>
+          <Typography variant="h6" color="text.secondary" sx={{ fontSize: { xs: "1rem", sm: "1.15rem" } }}>
             We are implementing the reference project structure with a cleaner customer journey and an admin-ready foundation.
           </Typography>
           <Stack direction={{ xs: "column", sm: "row" }} spacing={2} sx={{ pt: 1 }}>

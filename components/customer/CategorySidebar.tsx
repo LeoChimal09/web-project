@@ -29,25 +29,34 @@ export default function CategorySidebar({
   onSelectCategory,
 }: CategorySidebarProps) {
   return (
-    <Stack spacing={2}>
+    <Stack
+      spacing={1.5}
+      sx={{
+        flexDirection: { xs: "row", md: "column" },
+        overflowX: { xs: "auto", md: "visible" },
+        pb: { xs: 0.5, md: 0 },
+        pr: { xs: 0.5, md: 0 },
+      }}
+    >
       {categories.map((category) => (
         <Card
           key={category}
           onClick={() => onSelectCategory(category)}
           sx={{
+            minWidth: { xs: 150, sm: 170, md: "auto" },
             cursor: "pointer",
             transition: "all 0.2s ease",
             border: selectedCategory === category ? "2px solid" : "1px solid",
             borderColor: selectedCategory === category ? "primary.main" : "divider",
             backgroundColor: selectedCategory === category ? "action.selected" : "background.paper",
             "&:hover": {
-              transform: "translateY(-2px)",
+              transform: { xs: "none", md: "translateY(-2px)" },
               boxShadow: (theme) => theme.shadows[4],
             },
           }}
         >
-          <CardContent sx={{ display: "flex", gap: 2, alignItems: "center", p: 2 }}>
-            <Box sx={{ fontSize: "2rem" }}>
+          <CardContent sx={{ display: "flex", gap: 1.5, alignItems: "center", p: { xs: 1.25, md: 2 } }}>
+            <Box sx={{ fontSize: { xs: "1.45rem", md: "2rem" } }}>
               {categoryEmojis[category as keyof typeof categoryEmojis] || "📌"}
             </Box>
             <Typography

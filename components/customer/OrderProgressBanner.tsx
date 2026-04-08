@@ -40,7 +40,12 @@ export default function OrderProgressBanner() {
   return (
     <Box sx={{ backgroundColor: "rgba(143,45,31,0.08)", borderTop: "1px solid", borderBottom: "1px solid", borderColor: "rgba(143,45,31,0.18)" }}>
       <Container maxWidth="lg" sx={{ py: 1 }}>
-        <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={2}>
+        <Stack
+          direction={{ xs: "column", sm: "row" }}
+          alignItems={{ xs: "flex-start", sm: "center" }}
+          justifyContent="space-between"
+          spacing={1.25}
+        >
           <Stack direction="row" spacing={1.25} alignItems="center" sx={{ minWidth: 0 }}>
             <InfoOutlinedIcon color="primary" fontSize="small" />
             <Box sx={{ minWidth: 0 }}>
@@ -53,7 +58,12 @@ export default function OrderProgressBanner() {
             </Box>
           </Stack>
 
-          <Stack direction="row" spacing={0.5} alignItems="center" sx={{ flexShrink: 0 }}>
+          <Stack
+            direction="row"
+            spacing={0.5}
+            alignItems="center"
+            sx={{ flexShrink: 0, alignSelf: { xs: "stretch", sm: "auto" } }}
+          >
             <Button size="small" variant="outlined" LinkComponent={Link} href={`/orders/${activeOrder.ref}`}>
               View Order
             </Button>
