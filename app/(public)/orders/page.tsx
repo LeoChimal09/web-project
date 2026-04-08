@@ -146,7 +146,7 @@ export default function OrdersPage() {
       <Box sx={{ background: "linear-gradient(180deg, rgba(247,241,232,1) 0%, rgba(143,45,31,0.04) 100%)" }}>
         <Container maxWidth="sm" sx={{ py: { xs: 4, md: 8 }, textAlign: "center" }}>
           <Stack spacing={3}>
-            <Typography variant="h3">My Orders</Typography>
+            <Typography variant="h3" sx={{ fontSize: { xs: "2rem", sm: "2.5rem" } }}>My Orders</Typography>
             <Typography color="text.secondary">
               {orders.length === 0
                 ? "You haven't placed any orders yet."
@@ -165,7 +165,7 @@ export default function OrdersPage() {
     <Box sx={{ background: "linear-gradient(180deg, rgba(247,241,232,1) 0%, rgba(143,45,31,0.04) 100%)" }}>
       <Container maxWidth="md" sx={{ py: { xs: 4, md: 8 } }}>
         <Stack spacing={4}>
-          <Typography variant="h3">My Orders</Typography>
+          <Typography variant="h3" sx={{ fontSize: { xs: "2rem", sm: "2.5rem" } }}>My Orders</Typography>
 
           <Box sx={{ position: "relative" }}>
             <Box

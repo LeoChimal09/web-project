@@ -10,6 +10,8 @@ import Tab from "@mui/material/Tab";
 import Tabs from "@mui/material/Tabs";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
+import useMediaQuery from "@mui/material/useMediaQuery";
+import { useTheme } from "@mui/material/styles";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { useEffect, useState } from "react";
@@ -42,6 +44,8 @@ async function isAdminAccountEmail(email: string) {
 
 export default function WelcomeModal({ isAuthenticated }: WelcomeModalProps) {
   const router = useRouter();
+  const theme = useTheme();
+  const isSmallScreen = useMediaQuery(theme.breakpoints.down("sm"));
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<Mode>("signin");
   const [email, setEmail] = useState("");
@@ -125,7 +129,7 @@ export default function WelcomeModal({ isAuthenticated }: WelcomeModalProps) {
   }
 
   return (
-    <Dialog open={open} maxWidth="xs" fullWidth>
+    <Dialog open={open} maxWidth="xs" fullWidth fullScreen={isSmallScreen}>
       <DialogContent>
         <Stack spacing={2.5} sx={{ py: 1 }}>
           {/* Branding */}

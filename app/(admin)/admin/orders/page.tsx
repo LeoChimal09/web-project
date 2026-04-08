@@ -155,7 +155,9 @@ export default function AdminOrdersPage() {
         <Typography variant="overline" color="secondary.main">
           Admin Area
         </Typography>
-        <Typography variant="h3">Orders</Typography>
+        <Typography variant="h3" sx={{ fontSize: { xs: "2rem", sm: "2.5rem" } }}>
+          Orders
+        </Typography>
         <Typography color="text.secondary">
           Test-only admin view for local development. Status changes are persisted in the configured database.
         </Typography>
@@ -302,9 +304,9 @@ export default function AdminOrdersPage() {
                                       size="small"
                                       variant={order.status === nextStatus ? "contained" : "outlined"}
                                       color={STATUS_CONFIG[nextStatus].color === "default" ? "inherit" : STATUS_CONFIG[nextStatus].color}
+                                      sx={{ width: { xs: "100%", sm: "auto" } }}
                                       disabled={!canTransition || order.status === nextStatus}
-                                      onClick={() => {
-                                        if (nextStatus === "in_progress" && order.status !== "in_progress") {
+                                      onClick={() => {                                        if (nextStatus === "in_progress" && order.status !== "in_progress") {
                                           setEtaDialogOrderRef(order.ref);
                                           return;
                                         }

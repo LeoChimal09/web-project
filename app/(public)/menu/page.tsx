@@ -16,6 +16,8 @@ import AddIcon from "@mui/icons-material/Add";
 import RemoveIcon from "@mui/icons-material/Remove";
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import useMediaQuery from "@mui/material/useMediaQuery";
+import { useTheme } from "@mui/material/styles";
 import CategorySidebar from "@/components/customer/CategorySidebar";
 import type { MenuItem } from "@/components/customer/MenuCard";
 import MenuGridWithCart from "@/components/customer/MenuGridWithCart";
@@ -24,6 +26,8 @@ import { useCart } from "@/features/cart/CartContext";
 import { MENU_CATEGORIES, menuItems } from "@/features/menu/menu.data";
 
 export default function MenuPage() {
+  const theme = useTheme();
+  const isSmallScreen = useMediaQuery(theme.breakpoints.down("sm"));
   const [selectedCategory, setSelectedCategory] = useState<string>("All");
   const [modalOpen, setModalOpen] = useState(false);
   const [pendingLines, setPendingLines] = useState<PendingLine[]>([]);
@@ -107,7 +111,9 @@ export default function MenuPage() {
           <Typography variant="overline" color="secondary.main">
             Our Culinary Collection
           </Typography>
-          <Typography variant="h3">Browse Our Menu</Typography>
+          <Typography variant="h3" sx={{ fontSize: { xs: "2rem", sm: "2.5rem" } }}>
+            Browse Our Menu
+          </Typography>
           <Typography color="text.secondary" sx={{ maxWidth: 600 }}>
             Explore our carefully curated selection of dishes, from timeless classics to seasonal
             specials. All items are prepared fresh to order.
@@ -124,11 +130,22 @@ export default function MenuPage() {
           </Box>
           <Box sx={{ flex: 1, minWidth: 0 }}>
             <Stack spacing={3}>
-              <Stack direction="row" justifyContent="space-between" alignItems="center">
+              <Stack
+                direction={{ xs: "column", sm: "row" }}
+                justifyContent="space-between"
+                alignItems={{ xs: "flex-start", sm: "center" }}
+                spacing={1}
+              >
                 <Typography variant="h5" sx={{ fontWeight: 600 }}>
                   {selectedCategory}
                 </Typography>
-                <Button variant="outlined" size="small" LinkComponent={Link} href="/reservation">
+                <Button
+                  variant="outlined"
+                  size="small"
+                  LinkComponent={Link}
+                  href="/reservation"
+                  sx={{ alignSelf: { xs: "stretch", sm: "auto" } }}
+                >
                   Make a Reservation
                 </Button>
               </Stack>
@@ -137,7 +154,13 @@ export default function MenuPage() {
           </Box>
         </Stack>
 
-        <Dialog open={modalOpen} onClose={handlePlaceOrder} fullWidth maxWidth="sm">
+        <Dialog
+          open={modalOpen}
+          onClose={handlePlaceOrder}
+          fullWidth
+          maxWidth="sm"
+          fullScreen={isSmallScreen}
+        >
           <DialogTitle sx={{ pb: 1 }}>
             {lastAddedItem ? `${lastAddedItem.name} added` : "Building your order"}
           </DialogTitle>
@@ -265,11 +288,12 @@ export default function MenuPage() {
             </Stack>
           </DialogContent>
 
-          <DialogActions sx={{ px: 3, pb: 2.5, gap: 1 }}>
+          <DialogActions sx={{ px: 3, pb: 2.5, gap: 1, flexDirection: { xs: "column", sm: "row" } }}>
             <Button
               variant="text"
               onClick={handlePlaceOrder}
               disabled={pendingLines.length === 0}
+              sx={{ width: { xs: "100%", sm: "auto" } }}
             >
               Place &amp; Continue Ordering
             </Button>
@@ -279,6 +303,7 @@ export default function MenuPage() {
               href="/cart"
               onClick={handlePlaceOrder}
               disabled={pendingLines.length === 0}
+              sx={{ width: { xs: "100%", sm: "auto" } }}
             >
               Place Order &amp; View Cart
             </Button>

@@ -65,10 +65,10 @@ export default function OrderConfirmationPage() {
           {/* Status banner */}
           <Card sx={{ backgroundColor: "success.50", borderColor: "success.main" }} variant="outlined">
             <CardContent>
-              <Stack direction="row" spacing={2} alignItems="center">
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={2} alignItems={{ xs: "flex-start", sm: "center" }}>
                 <CheckCircleIcon color="success" sx={{ fontSize: 40 }} />
                 <Box>
-                  <Typography variant="h5" sx={{ fontWeight: 700 }}>
+                  <Typography variant="h5" sx={{ fontWeight: 700, fontSize: { xs: "1.4rem", sm: "1.7rem" } }}>
                     Order Placed!
                   </Typography>
                   <Typography color="text.secondary">
@@ -97,8 +97,9 @@ export default function OrderConfirmationPage() {
                         {entry.lines.map((line) => (
                           <Stack
                             key={line.id}
-                            direction="row"
+                            direction={{ xs: "column", sm: "row" }}
                             justifyContent="space-between"
+                            alignItems={{ xs: "flex-start", sm: "center" }}
                             sx={{ pl: 1 }}
                           >
                             <Typography variant="body2">
