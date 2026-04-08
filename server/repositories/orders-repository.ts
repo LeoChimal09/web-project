@@ -1,4 +1,5 @@
 import { desc, eq, inArray } from "drizzle-orm";
+import { randomBytes } from "node:crypto";
 import type {
   CancellationActor,
   CheckoutForm,
@@ -15,7 +16,7 @@ import { ordersTable } from "@/server/db/schema";
 type DbOrderRow = typeof ordersTable.$inferSelect;
 
 function generateOrderRef() {
-  return `TBL-${Date.now().toString(36).toUpperCase()}`;
+  return `TBL-${randomBytes(8).toString("hex").toUpperCase()}`;
 }
 
 function parseJson<T>(value: string): T {
@@ -68,6 +69,19 @@ export async function getOrder(ref: string) {
   const rows = await db.select().from(ordersTable).where(eq(ordersTable.ref, ref)).limit(1);
   const row = rows.at(0);
   return row ? toPlacedOrder(row) : undefined;
+}
+
+export async function getOrderWithCustomerEmail(ref: string) {
+  const rows = await db.select().from(ordersTable).where(eq(ordersTable.ref, ref)).limit(1);
+  const row = rows.at(0);
+  if (!row) {
+    return undefined;
+  }
+
+  return {
+    order: toPlacedOrder(row),
+    customerEmail: row.customerEmail?.trim().toLowerCase() ?? null,
+  };
 }
 
 export async function createOrder(input: CreateOrderInput, options?: { customerEmail?: string | null }) {

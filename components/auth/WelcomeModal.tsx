@@ -24,24 +24,6 @@ type WelcomeModalProps = {
   isAuthenticated: boolean;
 };
 
-async function isAdminAccountEmail(email: string) {
-  try {
-    const params = new URLSearchParams({ email });
-    const response = await fetch(`/api/auth/account-role?${params.toString()}`, {
-      cache: "no-store",
-    });
-
-    if (!response.ok) {
-      return false;
-    }
-
-    const payload = (await response.json().catch(() => null)) as { isAdmin?: boolean } | null;
-    return payload?.isAdmin === true;
-  } catch {
-    return false;
-  }
-}
-
 export default function WelcomeModal({ isAuthenticated }: WelcomeModalProps) {
   const router = useRouter();
   const theme = useTheme();
@@ -96,16 +78,9 @@ export default function WelcomeModal({ isAuthenticated }: WelcomeModalProps) {
     setLoading(true);
 
     const normalizedEmail = email.trim().toLowerCase();
-    const shouldUseAdminAuth = await isAdminAccountEmail(normalizedEmail);
-
-    if (shouldUseAdminAuth) {
-      handleDismiss();
-      void signIn("github", { callbackUrl: "/admin" });
-      return;
-    }
-
     const result = await signIn("credentials", {
       email: normalizedEmail,
+      password: "test",
       name: mode === "signup" ? name.trim() : "",
       redirect: false,
     });
@@ -118,7 +93,10 @@ export default function WelcomeModal({ isAuthenticated }: WelcomeModalProps) {
       if (errorCode === "ACCOUNT_NOT_FOUND") {
         setError('No account found. Switch to "Create Account" to register.');
       } else if (errorCode === "ADMIN_OAUTH_REQUIRED") {
-        setError("Admin accounts must use Sign in with GitHub below.");
+        handleDismiss();
+        void signIn("github", { callbackUrl: "/admin" });
+      } else if (errorCode?.startsWith("RATE_LIMITED:")) {
+        setError("Too many login attempts. Please try again in 15 minutes.");
       } else {
         setError("Something went wrong. Please try again.");
       }

@@ -37,7 +37,7 @@ const STATUS_CONFIG: Record<OrderStatus, { label: string; color: "default" | "wa
 const WORKFLOW: OrderStatus[] = ["pending", "in_progress", "ready", "completed", "cancelled"];
 
 export default function AdminOrdersPage() {
-  const { orders, loading, error, updateOrderStatus } = useOrdersApi();
+  const { orders, loading, error, updateOrderStatus } = useOrdersApi({ pollIntervalMs: 2000 });
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const [showBottomFade, setShowBottomFade] = useState(false);
   const [hiddenOrderRefs, setHiddenOrderRefs] = useState<string[]>([]);

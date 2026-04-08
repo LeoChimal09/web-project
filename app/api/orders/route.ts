@@ -2,6 +2,10 @@ import { NextResponse } from "next/server";
 import { createOrder, getAllOrders, getOrdersByCustomerEmail, getOrdersByRefs } from "@/server/repositories/orders-repository";
 import type { CreateOrderInput } from "@/features/checkout/checkout.types";
 import { getAuthSession, isAdminSession } from "@/lib/auth";
+import { getRestaurantStatus } from "@/lib/restaurant-hours";
+
+const MAX_GUEST_REFS = 25;
+const ORDER_REF_PATTERN = /^TBL-[A-Z0-9-]{6,64}$/;
 
 function isCreateOrderInput(value: unknown): value is CreateOrderInput {
   if (!value || typeof value !== "object") {
@@ -29,7 +33,8 @@ export async function GET(request: Request) {
   const refs = refsParam
     .split(",")
     .map((value) => value.trim())
-    .filter(Boolean);
+    .filter((value) => Boolean(value) && ORDER_REF_PATTERN.test(value))
+    .slice(0, MAX_GUEST_REFS);
 
   if (refs.length === 0) {
     return NextResponse.json([]);
@@ -43,6 +48,11 @@ export async function POST(request: Request) {
 
   if (!isCreateOrderInput(body)) {
     return NextResponse.json({ error: "Invalid order payload." }, { status: 400 });
+  }
+
+  const restaurantStatus = getRestaurantStatus();
+  if (!restaurantStatus.isOpen) {
+    return NextResponse.json({ error: restaurantStatus.message }, { status: 409 });
   }
 
   const session = await getAuthSession();
