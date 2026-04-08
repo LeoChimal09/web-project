@@ -1,9 +1,15 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "@/styles/globals.css";
 import MuiThemeProvider from "@/components/shared/MuiThemeProvider";
 import { CartProvider } from "@/features/cart/CartContext";
 import { OrderHistoryProvider } from "@/features/checkout/OrderHistoryContext";
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+};
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
