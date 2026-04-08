@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
-import { deleteOrder, dismissOrderNotification, getOrder, updateOrderStatus } from "@/server/repositories/orders-repository";
+import { deleteOrder, dismissOrderNotification, getOrderWithCustomerEmail, updateOrderStatus } from "@/server/repositories/orders-repository";
 import type { CancellationActor, OrderEtaMinutes, OrderStatus } from "@/features/checkout/checkout.types";
 import { isValidOrderEtaMinutes } from "@/features/checkout/order-status";
+import { getAuthSession, isAdminSession } from "@/lib/auth";
+import { isRateLimited, getRemainingAttempts } from "@/lib/rate-limiter";
 
 const VALID_ORDER_STATUSES: OrderStatus[] = ["pending", "in_progress", "ready", "completed", "cancelled"];
 const VALID_CANCELLATION_ACTORS: CancellationActor[] = ["admin", "customer"];
@@ -16,18 +18,57 @@ function isOrderStatus(value: unknown): value is OrderStatus {
   return typeof value === "string" && VALID_ORDER_STATUSES.includes(value as OrderStatus);
 }
 
-export async function GET(_request: Request, context: OrderRouteContext) {
-  const { ref } = await context.params;
-  const order = await getOrder(ref);
+function getSessionEmail(session: Awaited<ReturnType<typeof getAuthSession>>) {
+  return session?.user?.email?.trim().toLowerCase() ?? null;
+}
 
-  if (!order) {
+export async function GET(request: Request, context: OrderRouteContext) {
+  const { ref } = await context.params;
+  
+  // Rate limit order lookups: 10 attempts per minute per IP
+  const clientIp = request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "unknown";
+  const rateLimitKey = `order-lookup:${clientIp}`;
+  const RATE_LIMIT = 10;
+  const RATE_WINDOW_MS = 60 * 1000; // 1 minute
+
+  if (isRateLimited(rateLimitKey, RATE_LIMIT, RATE_WINDOW_MS)) {
+    const remaining = getRemainingAttempts(rateLimitKey, RATE_LIMIT, RATE_WINDOW_MS);
+    return NextResponse.json(
+      { error: "Too many requests. Please try again later." },
+      { 
+        status: 429,
+        headers: {
+          "Retry-After": "60",
+          "X-RateLimit-Remaining": remaining.toString(),
+        },
+      },
+    );
+  }
+
+  const session = await getAuthSession();
+  const orderResult = await getOrderWithCustomerEmail(ref);
+
+  if (!session) {
+    return NextResponse.json({ error: "Authentication required." }, { status: 401 });
+  }
+
+  if (!orderResult) {
     return NextResponse.json({ error: "Order not found." }, { status: 404 });
   }
 
-  return NextResponse.json(order);
+  const isAdmin = isAdminSession(session);
+  const sessionEmail = getSessionEmail(session);
+  const isOwner = Boolean(sessionEmail && orderResult.customerEmail && sessionEmail === orderResult.customerEmail);
+
+  if (!isAdmin && !isOwner) {
+    return NextResponse.json({ error: "Forbidden." }, { status: 403 });
+  }
+
+  return NextResponse.json(orderResult.order);
 }
 
 export async function PATCH(request: Request, context: OrderRouteContext) {
+  const session = await getAuthSession();
   const { ref } = await context.params;
   const body = await request.json().catch(() => null);
   const status = body && typeof body === "object" ? (body as { status?: unknown }).status : undefined;
@@ -36,14 +77,37 @@ export async function PATCH(request: Request, context: OrderRouteContext) {
     body && typeof body === "object" ? (body as { cancellationNote?: unknown }).cancellationNote : undefined;
   const cancelledBy = body && typeof body === "object" ? (body as { cancelledBy?: unknown }).cancelledBy : undefined;
 
-  const existingOrder = await getOrder(ref);
-  if (!existingOrder) {
+  if (!session) {
+    return NextResponse.json({ error: "Authentication required." }, { status: 401 });
+  }
+
+  const existingOrderResult = await getOrderWithCustomerEmail(ref);
+  if (!existingOrderResult) {
     return NextResponse.json({ error: "Order not found." }, { status: 404 });
   }
+
+  const isAdmin = isAdminSession(session);
+  const sessionEmail = getSessionEmail(session);
+  const isOwner = Boolean(
+    sessionEmail &&
+      existingOrderResult.customerEmail &&
+      sessionEmail === existingOrderResult.customerEmail,
+  );
+
+  if (!isAdmin && !isOwner) {
+    return NextResponse.json({ error: "Forbidden." }, { status: 403 });
+  }
+
+  const existingOrder = existingOrderResult.order;
 
   // Dismiss notification — separate lightweight operation, no status validation needed
   const notificationDismissed =
     body && typeof body === "object" ? (body as { notificationDismissed?: unknown }).notificationDismissed : undefined;
+
+  if (notificationDismissed === true && !isAdmin && !isOwner) {
+    return NextResponse.json({ error: "Forbidden." }, { status: 403 });
+  }
+
   if (notificationDismissed === true) {
     const dismissed = await dismissOrderNotification(ref);
     if (!dismissed) {
@@ -55,6 +119,10 @@ export async function PATCH(request: Request, context: OrderRouteContext) {
 
   if (!isOrderStatus(status)) {
     return NextResponse.json({ error: "Invalid order status." }, { status: 400 });
+  }
+
+  if (!isAdmin && status !== "cancelled") {
+    return NextResponse.json({ error: "Only admins can set this status." }, { status: 403 });
   }
 
   let parsedEtaMinutes: OrderEtaMinutes | null | undefined;
@@ -119,7 +187,17 @@ export async function PATCH(request: Request, context: OrderRouteContext) {
 }
 
 export async function DELETE(_request: Request, context: OrderRouteContext) {
+  const session = await getAuthSession();
   const { ref } = await context.params;
+
+  if (!session) {
+    return NextResponse.json({ error: "Authentication required." }, { status: 401 });
+  }
+
+  if (!isAdminSession(session)) {
+    return NextResponse.json({ error: "Forbidden." }, { status: 403 });
+  }
+
   const removed = await deleteOrder(ref);
 
   if (removed === null) {

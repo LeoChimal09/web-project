@@ -1,13 +1,10 @@
 import { NextResponse } from "next/server";
-import { isAdminEmail } from "@/lib/auth";
+
+function isTestMode() {
+  return process.env.ADMIN_TEST_MODE === "true";
+}
 
 export async function GET(request: Request) {
-  const url = new URL(request.url);
-  const email = (url.searchParams.get("email") ?? "").trim().toLowerCase();
-
-  if (!email) {
-    return NextResponse.json({ isAdmin: false });
-  }
-
-  return NextResponse.json({ isAdmin: isAdminEmail(email) });
+  // Keep response generic to avoid leaking whether an email is an admin account.
+  return NextResponse.json({ requiresOAuth: !isTestMode() });
 }

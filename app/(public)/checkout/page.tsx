@@ -21,7 +21,7 @@ import DeliveryDiningIcon from "@mui/icons-material/DeliveryDining";
 import StorefrontIcon from "@mui/icons-material/Storefront";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useCart } from "@/features/cart/CartContext";
 import { useOrdersApi } from "@/hooks/useOrdersApi";
 import type { CheckoutForm, FulfillmentType, PaymentMethod } from "@/features/checkout/checkout.types";
@@ -39,6 +39,11 @@ const EMPTY_FORM: CheckoutForm = {
 };
 
 type FieldErrors = Partial<Record<keyof CheckoutForm | "address1" | "city" | "postcode", string>>;
+
+type RestaurantStatus = {
+  isOpen: boolean;
+  message: string;
+};
 
 function validate(form: CheckoutForm): FieldErrors {
   const errors: FieldErrors = {};
@@ -66,6 +71,45 @@ export default function CheckoutPage() {
   const [submitted, setSubmitted] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [restaurantStatus, setRestaurantStatus] = useState<RestaurantStatus>({
+    isOpen: true,
+    message: "",
+  });
+
+  useEffect(() => {
+    let mounted = true;
+
+    const loadRestaurantStatus = async () => {
+      try {
+        const response = await fetch("/api/restaurant-status", { cache: "no-store" });
+        if (!response.ok) {
+          return;
+        }
+
+        const payload = (await response.json().catch(() => null)) as RestaurantStatus | null;
+        if (!mounted || !payload) {
+          return;
+        }
+
+        setRestaurantStatus({
+          isOpen: payload.isOpen === true,
+          message: payload.message ?? "",
+        });
+      } catch {
+        // Keep checkout available if status endpoint is temporarily unreachable.
+      }
+    };
+
+    void loadRestaurantStatus();
+    const interval = setInterval(() => {
+      void loadRestaurantStatus();
+    }, 60000);
+
+    return () => {
+      mounted = false;
+      clearInterval(interval);
+    };
+  }, []);
 
   const tax = cart.totalPrice * 0.08;
   const total = cart.totalPrice + tax;
@@ -98,6 +142,12 @@ export default function CheckoutPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+
+    if (!restaurantStatus.isOpen) {
+      setSubmitError(restaurantStatus.message || "We are currently closed.");
+      return;
+    }
+
     const errs = validate(form);
     if (Object.keys(errs).length > 0) {
       setErrors(errs);
@@ -333,6 +383,9 @@ export default function CheckoutPage() {
 
                 {/* 5. Terms + Submit */}
                 <Stack spacing={1}>
+                  {!restaurantStatus.isOpen && (
+                    <FormHelperText error>{restaurantStatus.message || "We are currently closed."}</FormHelperText>
+                  )}
                   {submitError && <FormHelperText error>{submitError}</FormHelperText>}
                   <FormControlLabel
                     control={
@@ -348,7 +401,14 @@ export default function CheckoutPage() {
                       {errors.termsAgreed}
                     </FormHelperText>
                   )}
-                  <Button type="submit" variant="contained" size="large" fullWidth sx={{ mt: 1 }} disabled={isSubmitting}>
+                  <Button
+                    type="submit"
+                    variant="contained"
+                    size="large"
+                    fullWidth
+                    sx={{ mt: 1 }}
+                    disabled={isSubmitting || !restaurantStatus.isOpen}
+                  >
                     {isSubmitting ? "Placing Order..." : "Place Order"}
                   </Button>
                 </Stack>

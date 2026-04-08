@@ -12,6 +12,7 @@ import type {
 type UseOrdersApiOptions = {
   ref?: string | null;
   enabled?: boolean;
+  pollIntervalMs?: number; // Auto-poll interval (disabled if not set)
 };
 
 type ApiError = {
@@ -86,7 +87,7 @@ async function parseApiResponse<T>(response: Response): Promise<T> {
 }
 
 export function useOrdersApi(options: UseOrdersApiOptions = {}) {
-  const { ref, enabled = true } = options;
+  const { ref, enabled = true, pollIntervalMs = 3000 } = options;
   const [orders, setOrders] = useState<PlacedOrder[]>([]);
   const [order, setOrder] = useState<PlacedOrder | null>(null);
   const [loading, setLoading] = useState(enabled);
@@ -98,12 +99,29 @@ export function useOrdersApi(options: UseOrdersApiOptions = {}) {
       return;
     }
 
-    setLoading(true);
     setError(null);
 
     try {
       if (ref) {
-        const nextOrder = await fetch(`/api/orders/${ref}`, { cache: "no-store" }).then(parseApiResponse<PlacedOrder>);
+        let nextOrder: PlacedOrder;
+
+        // For guest users, prefer the refs-based endpoint scoped to local owned refs.
+        const ownedRefs = getOwnedOrderRefs();
+        if (ownedRefs.includes(ref)) {
+          const params = new URLSearchParams();
+          params.set("refs", ref);
+          const matchingOrders = await fetch(`/api/orders?${params.toString()}`, { cache: "no-store" }).then(
+            parseApiResponse<PlacedOrder[]>,
+          );
+          const fromOwned = matchingOrders.find((entry) => entry.ref === ref);
+          if (!fromOwned) {
+            throw new Error("Order not found.");
+          }
+          nextOrder = fromOwned;
+        } else {
+          nextOrder = await fetch(`/api/orders/${ref}`, { cache: "no-store" }).then(parseApiResponse<PlacedOrder>);
+        }
+
         setOrder(nextOrder);
         setOrders([]);
       } else {
@@ -123,8 +141,20 @@ export function useOrdersApi(options: UseOrdersApiOptions = {}) {
   }, [enabled, ref]);
 
   useEffect(() => {
+    setLoading(true);
     void refetch();
-  }, [refetch]);
+
+    // Set up polling if interval is specified
+    if (pollIntervalMs <= 0) {
+      return;
+    }
+
+    const interval = setInterval(() => {
+      void refetch();
+    }, pollIntervalMs);
+
+    return () => clearInterval(interval);
+  }, [refetch, pollIntervalMs]);
 
   const createOrder = useCallback(async (input: CreateOrderInput) => {
     const createdOrder = await fetch("/api/orders", {

@@ -105,11 +105,23 @@ bun i
 Create `.env` with required values:
 
 ```bash
+# Database
 DATABASE_URL=mysql://user:pass@localhost:3306/dbname
+
+# Authentication
 AUTH_SECRET=replace-with-random-secret
 GITHUB_ID=github-oauth-client-id
 GITHUB_SECRET=github-oauth-client-secret
 ADMIN_EMAILS=admin1@example.com,admin2@example.com
+
+# Restaurant hours (optional — defaults: 09:00 AM - 10:00 PM UTC, closed weekends)
+RESTAURANT_OPEN_TIME=09:00 AM
+RESTAURANT_CLOSE_TIME=10:00 PM
+RESTAURANT_TIMEZONE=UTC
+
+# Test mode (development only — see Auth Model section)
+ADMIN_TEST_MODE=false
+TEST_ADMIN_EMAILS=test-admin@example.com
 ```
 
 Run database schema sync:
@@ -139,6 +151,41 @@ bun run lint
 - Customer order listing is scoped to the signed-in customer email.
 - Guest order listing is scoped to browser-owned order refs.
 
+### Local Development: Test Mode
+
+Set `ADMIN_TEST_MODE=true` and `NODE_ENV=development` to allow admin sign-in via email/password without OAuth:
+
+```bash
+ADMIN_TEST_MODE=true
+TEST_ADMIN_EMAILS=developer@example.com
+```
+
+**Important:** Test mode is **always disabled in production** via a hard-block at startup. An error is thrown if `NODE_ENV=production` and `ADMIN_TEST_MODE=true`.
+
+### Security Features
+
+- **Order API Authorization**: GET, PATCH, DELETE operations on `/api/orders/[ref]` require session authentication and ownership or admin verification.
+- **Rate Limiting**: 
+  - Login attempts: 5 per 15 minutes per email.
+  - Order lookups: 10 per minute per IP address.
+  - Prevents brute-force attacks on passwords and order references.
+- **Cryptographic Order References**: Order refs use secure random generation (`randomBytes(8).toString("hex")`), not timestamps.
+- **Guest Ref Validation**: Guest order lookups validate format and cap at 25 items to prevent abuse.
+
+## Restaurant Hours
+
+Orders are blocked when the restaurant is closed. The app enforces hours both server-side (POST `/api/orders`) and client-side (checkout button disabled).
+
+- **Default Hours**: 9:00 AM – 10:00 PM, Monday–Friday. Closed weekends.
+- **Configuration**:
+  ```bash
+  RESTAURANT_OPEN_TIME=09:00 AM     # Supports 12-hour (09:00 AM) or 24-hour (09:00) format
+  RESTAURANT_CLOSE_TIME=10:00 PM
+  RESTAURANT_TIMEZONE=UTC           # Any IANA timezone (e.g., America/New_York, Europe/London)
+  ```
+- **Overnight Windows**: If `OPEN_TIME > CLOSE_TIME` (e.g., 8:00 PM – 8:00 AM), the system correctly interprets it as overnight.
+- **Status Endpoint**: Clients fetch `/api/restaurant-status` to check open/closed state and display user messages.
+
 ## Production Setup
 
 1. Provision production infrastructure.
@@ -154,6 +201,15 @@ GITHUB_ID=github-oauth-client-id
 GITHUB_SECRET=github-oauth-client-secret
 ADMIN_EMAILS=admin1@example.com,admin2@example.com
 NEXTAUTH_URL=https://your-domain.com
+
+# Restaurant hours (optional)
+RESTAURANT_OPEN_TIME=09:00 AM
+RESTAURANT_CLOSE_TIME=10:00 PM
+RESTAURANT_TIMEZONE=UTC
+
+# IMPORTANT: Never set these in production
+# ADMIN_TEST_MODE must be false or unset
+# TEST_ADMIN_EMAILS should not be configured
 ```
 
 3. Update your GitHub OAuth app.
