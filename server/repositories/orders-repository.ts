@@ -6,6 +6,7 @@ import type {
   CreateOrderInput,
   OrderEtaMinutes,
   OrderStatus,
+  PaymentStatus,
   PlacedOrder,
 } from "@/features/checkout/checkout.types";
 import { canRemoveOrderFromHistory, canTransitionOrderStatus } from "@/features/checkout/order-status";
@@ -28,6 +29,13 @@ function toPlacedOrder(row: DbOrderRow): PlacedOrder {
     ref: row.ref,
     placedAt: row.placedAt,
     status: row.status as OrderStatus,
+    paymentStatus: row.paymentStatus as PaymentStatus,
+    paymentProvider: row.paymentProvider as "stripe" | null,
+    stripeCheckoutSessionId: row.stripeCheckoutSessionId,
+    stripePaymentIntentId: row.stripePaymentIntentId,
+    paymentCurrency: row.paymentCurrency,
+    paymentAmountCents: row.paymentAmountCents,
+    paidAt: row.paidAt,
     etaMinutes: (row.etaMinutes as OrderEtaMinutes | null) ?? null,
     cancellationNote: row.cancellationNote,
     cancelledBy: row.cancelledBy as CancellationActor | null,
@@ -89,6 +97,13 @@ export async function createOrder(input: CreateOrderInput, options?: { customerE
     ref: generateOrderRef(),
     placedAt: new Date().toISOString(),
     status: "pending",
+    paymentStatus: input.form.payment === "card" ? "pending" : "paid",
+    paymentProvider: input.form.payment === "card" ? "stripe" : null,
+    stripeCheckoutSessionId: null,
+    stripePaymentIntentId: null,
+    paymentCurrency: "usd",
+    paymentAmountCents: Math.round(input.totalPrice * 100),
+    paidAt: input.form.payment === "card" ? null : new Date().toISOString(),
     etaMinutes: null,
     cancellationNote: null,
     cancelledBy: null,
@@ -103,6 +118,13 @@ export async function createOrder(input: CreateOrderInput, options?: { customerE
     customerEmail: options?.customerEmail?.trim().toLowerCase() ?? null,
     placedAt: order.placedAt,
     status: order.status,
+    paymentStatus: order.paymentStatus,
+    paymentProvider: order.paymentProvider,
+    stripeCheckoutSessionId: order.stripeCheckoutSessionId,
+    stripePaymentIntentId: order.stripePaymentIntentId,
+    paymentCurrency: order.paymentCurrency,
+    paymentAmountCents: order.paymentAmountCents,
+    paidAt: order.paidAt,
     etaMinutes: order.etaMinutes,
     cancellationNote: order.cancellationNote,
     cancelledBy: order.cancelledBy,
@@ -113,6 +135,70 @@ export async function createOrder(input: CreateOrderInput, options?: { customerE
   });
 
   return order;
+}
+
+export async function getOrderByStripeCheckoutSessionId(sessionId: string) {
+  const rows = await db
+    .select()
+    .from(ordersTable)
+    .where(eq(ordersTable.stripeCheckoutSessionId, sessionId))
+    .limit(1);
+
+  const row = rows.at(0);
+  return row ? toPlacedOrder(row) : undefined;
+}
+
+export async function updateOrderPayment(
+  ref: string,
+  input: {
+    paymentStatus?: PaymentStatus;
+    paymentProvider?: "stripe" | null;
+    stripeCheckoutSessionId?: string | null;
+    stripePaymentIntentId?: string | null;
+    paymentCurrency?: string | null;
+    paymentAmountCents?: number | null;
+    paidAt?: string | null;
+  },
+) {
+  const existing = await getOrder(ref);
+  if (!existing) {
+    return undefined;
+  }
+
+  const next = {
+    ...existing,
+    paymentStatus: input.paymentStatus ?? existing.paymentStatus ?? "pending",
+    paymentProvider:
+      input.paymentProvider !== undefined ? input.paymentProvider : (existing.paymentProvider ?? null),
+    stripeCheckoutSessionId:
+      input.stripeCheckoutSessionId !== undefined
+        ? input.stripeCheckoutSessionId
+        : (existing.stripeCheckoutSessionId ?? null),
+    stripePaymentIntentId:
+      input.stripePaymentIntentId !== undefined
+        ? input.stripePaymentIntentId
+        : (existing.stripePaymentIntentId ?? null),
+    paymentCurrency:
+      input.paymentCurrency !== undefined ? input.paymentCurrency : (existing.paymentCurrency ?? null),
+    paymentAmountCents:
+      input.paymentAmountCents !== undefined ? input.paymentAmountCents : (existing.paymentAmountCents ?? null),
+    paidAt: input.paidAt !== undefined ? input.paidAt : (existing.paidAt ?? null),
+  };
+
+  await db
+    .update(ordersTable)
+    .set({
+      paymentStatus: next.paymentStatus,
+      paymentProvider: next.paymentProvider,
+      stripeCheckoutSessionId: next.stripeCheckoutSessionId,
+      stripePaymentIntentId: next.stripePaymentIntentId,
+      paymentCurrency: next.paymentCurrency,
+      paymentAmountCents: next.paymentAmountCents,
+      paidAt: next.paidAt,
+    })
+    .where(eq(ordersTable.ref, ref));
+
+  return next;
 }
 
 export async function updateOrderStatus(

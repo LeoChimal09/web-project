@@ -125,6 +125,11 @@ RESEND_API_KEY=re_xxxxxxxxxxxxxxxxx
 EMAIL_FROM=onboarding@resend.dev
 ADMIN_NOTIFICATION_EMAILS=owner@example.com
 
+# Stripe payments
+STRIPE_SECRET_KEY=sk_test_xxxxxxxxxxxxx
+STRIPE_WEBHOOK_SECRET=whsec_xxxxxxxxxxxxx
+STRIPE_ALLOW_TEST_IN_PRODUCTION=false
+
 # App URL used to build verification links
 NEXTAUTH_URL=http://localhost:3000
 
@@ -209,6 +214,53 @@ If two people order as guests on a shared device (e.g., a restaurant kiosk), bot
 - Admin emails include a direct link to the admin orders screen.
 - Email sending is non-blocking: checkout and status updates still succeed even if the email provider is temporarily unavailable.
 
+## Stripe Payments (Phase 1)
+
+Card payments now use Stripe Checkout with server-side session creation and webhook verification.
+
+### Stripe Mode Safety Guard
+
+- `STRIPE_SECRET_KEY` must be a valid Stripe key prefix: `sk_test_...` or `sk_live_...`.
+- When `NODE_ENV=production`, using `sk_test_...` is blocked by default.
+- To intentionally run sandbox on a production deployment, set:
+
+```bash
+STRIPE_ALLOW_TEST_IN_PRODUCTION=true
+```
+
+This makes test-mode in production an explicit opt-in and prevents accidental misconfiguration.
+
+- `POST /api/payments/checkout-session` creates a Stripe Checkout Session and an order with pending payment.
+- `POST /api/webhooks/stripe` verifies Stripe signatures and updates order payment state.
+- Successful Stripe payment marks the order as paid and triggers customer/admin order emails.
+- Kitchen status progression is blocked until payment is marked paid.
+
+### Local Stripe Testing
+
+1. Set environment variables:
+
+```bash
+STRIPE_SECRET_KEY=sk_test_xxxxxxxxxxxxx
+STRIPE_WEBHOOK_SECRET=whsec_xxxxxxxxxxxxx
+```
+
+2. Forward Stripe webhooks to local app:
+
+```bash
+stripe listen --forward-to localhost:3000/api/webhooks/stripe
+```
+
+3. Use test card on Stripe Checkout:
+
+```text
+4242 4242 4242 4242
+Any future date, any CVC, any ZIP
+```
+
+4. Complete a card checkout and verify:
+- Payment status becomes `paid`.
+- Order appears in admin queue and can move through workflow.
+
 ### Security Features
 
 - **Order API Authorization**: GET, PATCH, DELETE operations on `/api/orders/[ref]` require session authentication and ownership or admin verification.
@@ -258,6 +310,10 @@ NEXTAUTH_URL=https://your-domain.com
 RESEND_API_KEY=re_xxxxxxxxxxxxxxxxx
 EMAIL_FROM="TableStory <no-reply@yourdomain.com>"
 ADMIN_NOTIFICATION_EMAILS=owner@example.com
+
+# Stripe payments
+STRIPE_SECRET_KEY=sk_live_xxxxxxxxxxxxx
+STRIPE_WEBHOOK_SECRET=whsec_xxxxxxxxxxxxx
 
 # Restaurant hours (optional)
 RESTAURANT_OPEN_TIME=09:00 AM

@@ -7,12 +7,20 @@ import Container from "@mui/material/Container";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import Link from "next/link";
+import { useSyncExternalStore } from "react";
 import { useCart } from "@/features/cart/CartContext";
 
 export default function CartMiniBar() {
   const { cart } = useCart();
+  const hydrated = useSyncExternalStore(
+    () => () => undefined,
+    () => true,
+    () => false,
+  );
+  const totalOrders = hydrated ? cart.totalOrders : 0;
+  const totalPrice = hydrated ? cart.totalPrice : 0;
 
-  if (cart.totalOrders === 0) return null;
+  if (totalOrders === 0) return null;
 
   return (
     <Box
@@ -35,7 +43,7 @@ export default function CartMiniBar() {
           <Stack direction="row" spacing={1} alignItems="center">
             <ShoppingBagIcon fontSize="small" />
             <Typography variant="body2" sx={{ fontWeight: 600 }}>
-              {cart.totalOrders} order{cart.totalOrders > 1 ? "s" : ""} &nbsp;·&nbsp; ${cart.totalPrice.toFixed(2)}
+              {totalOrders} order{totalOrders > 1 ? "s" : ""} &nbsp;·&nbsp; ${totalPrice.toFixed(2)}
             </Typography>
           </Stack>
           <Button

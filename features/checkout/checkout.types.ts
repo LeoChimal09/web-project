@@ -2,6 +2,8 @@ export type FulfillmentType = "pickup" | "delivery";
 
 export type PaymentMethod = "cash" | "card";
 
+export type PaymentStatus = "pending" | "paid" | "failed" | "refunded";
+
 export type DeliveryAddress = {
   address1: string;
   city: string;
@@ -31,6 +33,13 @@ export type PlacedOrder = {
   ref: string;
   placedAt: string; // ISO string
   status: OrderStatus;
+  paymentStatus?: PaymentStatus;
+  paymentProvider?: "stripe" | null;
+  stripeCheckoutSessionId?: string | null;
+  stripePaymentIntentId?: string | null;
+  paymentCurrency?: string | null;
+  paymentAmountCents?: number | null;
+  paidAt?: string | null;
   etaMinutes?: OrderEtaMinutes | null;
   cancellationNote?: string | null;
   cancelledBy?: CancellationActor | null;
