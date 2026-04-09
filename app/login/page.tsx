@@ -1,7 +1,6 @@
 import Container from "@mui/material/Container";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
-import Link from "next/link";
 import Button from "@mui/material/Button";
 
 export default function LoginPage() {
@@ -16,10 +15,10 @@ export default function LoginPage() {
           Navigate to the admin area to sign in with Google OAuth or email verification (if test mode is enabled).
         </Typography>
         <Stack alignItems="center" spacing={2}>
-          <Button variant="contained" LinkComponent={Link} href="/admin">
+          <Button variant="contained" href="/admin">
             Go to Admin Area
           </Button>
-          <Button variant="outlined" LinkComponent={Link} href="/">
+          <Button variant="outlined" href="/">
             Back to Home
           </Button>
         </Stack>
