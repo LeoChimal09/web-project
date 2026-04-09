@@ -4,6 +4,7 @@ import type { CancellationActor, OrderEtaMinutes, OrderStatus } from "@/features
 import { isValidOrderEtaMinutes } from "@/features/checkout/order-status";
 import { getAuthSession, isAdminSession } from "@/lib/auth";
 import { isRateLimited, getRemainingAttempts } from "@/lib/rate-limiter";
+import { sendCustomerOrderStatusUpdateEmail } from "@/lib/resend-mailer";
 
 const VALID_ORDER_STATUSES: OrderStatus[] = ["pending", "in_progress", "ready", "completed", "cancelled"];
 const VALID_CANCELLATION_ACTORS: CancellationActor[] = ["admin", "customer"];
@@ -181,6 +182,15 @@ export async function PATCH(request: Request, context: OrderRouteContext) {
       },
       { status: 409 },
     );
+  }
+
+  if (order === undefined) {
+    return NextResponse.json({ error: "Order not found." }, { status: 404 });
+  }
+
+  const customerEmail = order.form.email.trim().toLowerCase();
+  if (customerEmail && existingOrder.status !== order.status) {
+    void sendCustomerOrderStatusUpdateEmail({ email: customerEmail, order }).catch(() => undefined);
   }
 
   return NextResponse.json(order);

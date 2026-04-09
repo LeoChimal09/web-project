@@ -3,6 +3,7 @@ import { createOrder, getAllOrders, getOrdersByCustomerEmail, getOrdersByRefs } 
 import type { CreateOrderInput } from "@/features/checkout/checkout.types";
 import { getAuthSession, isAdminSession } from "@/lib/auth";
 import { getRestaurantStatus } from "@/lib/restaurant-hours";
+import { sendAdminNewOrderEmail, sendCustomerOrderReceivedEmail } from "@/lib/resend-mailer";
 
 const MAX_GUEST_REFS = 25;
 const ORDER_REF_PATTERN = /^TBL-[A-Z0-9-]{6,64}$/;
@@ -59,5 +60,12 @@ export async function POST(request: Request) {
   const order = await createOrder(body, {
     customerEmail: session?.user?.email ?? null,
   });
+
+  const customerEmail = order.form.email.trim().toLowerCase();
+  if (customerEmail) {
+    void sendCustomerOrderReceivedEmail({ email: customerEmail, order }).catch(() => undefined);
+  }
+  void sendAdminNewOrderEmail({ order }).catch(() => undefined);
+
   return NextResponse.json(order, { status: 201 });
 }

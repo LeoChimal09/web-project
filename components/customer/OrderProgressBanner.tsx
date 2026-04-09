@@ -9,31 +9,29 @@ import IconButton from "@mui/material/IconButton";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import Link from "next/link";
-import { useMemo, useRef } from "react";
+import { useMemo, useState } from "react";
 import { getOrderProgressMessage, isActiveOrderStatus } from "@/features/checkout/order-status";
 import { useOrdersApi } from "@/hooks/useOrdersApi";
 
 export default function OrderProgressBanner() {
   const { orders, loading, dismissNotification } = useOrdersApi();
-  // Optimistic set: refs dismissed this session before the server round-trip completes
-  const optimisticDismissed = useRef(new Set<string>());
+  const [optimisticDismissed, setOptimisticDismissed] = useState<string[]>([]);
 
   const activeOrder = useMemo(() => {
     return orders.find(
       (order) =>
         isActiveOrderStatus(order.status, order.cancelledBy) &&
         !order.notificationDismissedAt &&
-        !optimisticDismissed.current.has(order.ref),
+          !optimisticDismissed.includes(order.ref),
     );
-  }, [orders]);
+        }, [orders, optimisticDismissed]);
 
   if (loading || !activeOrder) {
     return null;
   }
 
   const handleDismiss = () => {
-    // Instantly hide via optimistic ref so UI responds before API round-trip
-    optimisticDismissed.current.add(activeOrder.ref);
+    setOptimisticDismissed((prev) => (prev.includes(activeOrder.ref) ? prev : [...prev, activeOrder.ref]));
     void dismissNotification(activeOrder.ref);
   };
 

@@ -48,8 +48,9 @@ export function isRateLimited(
 export function getRemainingAttempts(
   identifier: string,
   limit: number,
-  windowMs: number
+  _windowMs: number
 ): number {
+  void _windowMs;
   const now = Date.now();
   const entry = store.get(identifier);
 
@@ -65,8 +66,9 @@ export function getRemainingAttempts(
  */
 export function getResetTime(
   identifier: string,
-  windowMs: number
+  _windowMs: number
 ): number | null {
+  void _windowMs;
   const entry = store.get(identifier);
   if (!entry) {
     return null;

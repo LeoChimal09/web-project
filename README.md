@@ -123,6 +123,7 @@ ADMIN_EMAILS=admin1@example.com,admin2@example.com
 # Customer email verification (Resend magic links)
 RESEND_API_KEY=re_xxxxxxxxxxxxxxxxx
 EMAIL_FROM=onboarding@resend.dev
+ADMIN_NOTIFICATION_EMAILS=owner@example.com
 
 # App URL used to build verification links
 NEXTAUTH_URL=http://localhost:3000
@@ -159,21 +160,54 @@ bun run lint
 ## Auth Model
 
 - Customers use one-time email verification links (magic links) sent via Resend.
-- If the entered email is allowlisted as admin, the same modal automatically routes to Google OAuth.
-- Admin privileges are granted only to Google-authenticated sessions with allowlisted emails.
+- Admins in **production** (`ADMIN_TEST_MODE=false`) must use Google OAuth — email bypass is disabled.
+- Admins in **test mode** (`ADMIN_TEST_MODE=true`) can use either Google OAuth or fast email verification bypass for development convenience.
+  - Public customer sign-in (WelcomeModal) never auto-elevates allowlisted emails to admin.
+  - Explicit admin sign-in (SignInModal) can trigger the test-mode email bypass if `adminIntent=true`.
+- Admin privileges are granted only to sessions with allowlisted emails in `ADMIN_EMAILS` (production) or `TEST_ADMIN_EMAILS` (test mode).
 - Customer order listing is scoped to the signed-in customer email.
-- Guest order listing is scoped to browser-owned order refs.
+- Guest order listing is scoped to browser-owned order refs (see Guest Ordering Privacy below).
 
-### Local Development: Test Mode
+### Test Mode Admin Flow
 
-Set `ADMIN_TEST_MODE=true` and `NODE_ENV=development` to allow admin sign-in via email/password without OAuth:
+When `ADMIN_TEST_MODE=true` and `NODE_ENV=development`:
 
-```bash
-ADMIN_TEST_MODE=true
-TEST_ADMIN_EMAILS=developer@example.com
-```
+1. Admin opens admin area → SignInModal detects test mode and shows email field instead of Google button.
+2. Admin enters allowlisted email → request-link endpoint returns `directAdminSignIn: true`.
+3. SignInModal intercepts response and calls credentials sign-in with password `"test"` and `adminIntent: "true"`.
+4. Credentials provider grants admin session immediately (skips email verification).
 
 **Important:** Test mode is **always disabled in production** via a hard-block at startup. An error is thrown if `NODE_ENV=production` and `ADMIN_TEST_MODE=true`.
+
+### Guest Ordering Privacy
+
+⚠️ **Important:** Guest orders are stored in browser localStorage and shared with other guests on the same device.
+
+If two people order as guests on a shared device (e.g., a restaurant kiosk), both will see each other's order history. For privacy:
+- Encourage customers to create accounts (sign in with email) instead of ordering as guests.
+- For restaurant kiosks, clear localStorage between sessions or use incognito/private mode.
+
+## Features
+
+### Order Management
+- **Clear Order History**: Remove all completed or cancelled orders from your local browser history with a single click. Available on both customer and admin order pages.
+- **Order Status Tracking**: Real-time order progress from pending → in progress → ready → completed/cancelled.
+- **Order Details**: View full order items, prices, fulfillment method, and status history for any past order.
+- **Remake Order**: Quickly duplicate a previous order to your cart and modify before checkout.
+
+### Restaurant Hours Enforcement
+- Orders are blocked when the restaurant is closed (server-side and client-side).
+- Configurable hours with support for overnight windows (e.g., 8:00 PM – 8:00 AM).
+- Timezone-aware status messages using any IANA timezone (default: America/Chicago).
+
+## Email Notifications
+
+- Customers receive an order receipt email when an order is placed.
+- Customers receive status update emails when their order moves through progress states.
+- Customer emails include direct links back to the website order page.
+- Admins receive new order emails using `ADMIN_NOTIFICATION_EMAILS` or, if unset, the `ADMIN_EMAILS` allowlist.
+- Admin emails include a direct link to the admin orders screen.
+- Email sending is non-blocking: checkout and status updates still succeed even if the email provider is temporarily unavailable.
 
 ### Security Features
 
@@ -223,6 +257,7 @@ ADMIN_EMAILS=admin1@example.com,admin2@example.com
 NEXTAUTH_URL=https://your-domain.com
 RESEND_API_KEY=re_xxxxxxxxxxxxxxxxx
 EMAIL_FROM="TableStory <no-reply@yourdomain.com>"
+ADMIN_NOTIFICATION_EMAILS=owner@example.com
 
 # Restaurant hours (optional)
 RESTAURANT_OPEN_TIME=09:00 AM

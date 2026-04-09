@@ -12,6 +12,7 @@ import { consumeEmailVerificationToken } from "@/server/repositories/email-verif
 
 const REQUESTED_ADMIN_TEST_MODE = process.env.ADMIN_TEST_MODE === "true";
 const IS_PRODUCTION = process.env.NODE_ENV === "production";
+const ADMIN_TEST_BYPASS_PASSWORD = process.env.ADMIN_TEST_BYPASS_PASSWORD ?? "test";
 
 if (IS_PRODUCTION && REQUESTED_ADMIN_TEST_MODE) {
   throw new Error("ADMIN_TEST_MODE must never be enabled in production.");
@@ -36,6 +37,10 @@ function isTestMode() {
   return REQUESTED_ADMIN_TEST_MODE && !IS_PRODUCTION;
 }
 
+export function isAdminTestModeEnabled() {
+  return isTestMode();
+}
+
 export function isAdminEmail(email?: string | null) {
   if (!email) {
     return false;
@@ -46,6 +51,13 @@ export function isAdminEmail(email?: string | null) {
 
 type AdminAwareSession = Awaited<ReturnType<typeof getAuthSession>> & {
   isAdmin?: boolean;
+};
+
+type AuthenticatedUser = {
+  id: string;
+  email: string;
+  name: string;
+  isAdminIntent?: boolean;
 };
 
 export function isAdminSession(session: AdminAwareSession | null | undefined) {
@@ -75,6 +87,7 @@ export const authOptions: NextAuthOptions = {
         name: { label: "Name", type: "text" },
         password: { label: "Password", type: "password" },
         verificationToken: { label: "Verification Token", type: "text" },
+        adminIntent: { label: "Admin Intent", type: "text" },
       },
       async authorize(credentials) {
         const email = (credentials?.email ?? "").trim().toLowerCase();
@@ -95,42 +108,62 @@ export const authOptions: NextAuthOptions = {
         const password = credentials?.password ?? "";
         const testMode = isTestMode();
         const verificationToken = (credentials?.verificationToken ?? "").trim();
+        const adminIntent = credentials?.adminIntent === "true";
 
-        // In test mode: allow all admin emails with password, skip OAuth check
+        // In test mode, admins still need an explicit admin sign-in flow, but can bypass the emailed link from the admin modal.
         if (testMode) {
-          if (isAdmin && password) {
-            return { id: "admin", email, name: credentials?.name ?? "Admin" };
-          }
-
-          if (isAdmin && !password) {
-            return null;
-          }
-
-          // Non-admin credentials in test mode still require verified email links.
-          if (!isAdmin) {
-            if (!verificationToken) {
-              throw new Error("VERIFICATION_REQUIRED");
+          if (isAdmin && adminIntent) {
+            if (password === ADMIN_TEST_BYPASS_PASSWORD) {
+              return {
+                id: "admin",
+                email,
+                name: credentials?.name ?? "Admin",
+                isAdminIntent: true,
+              } satisfies AuthenticatedUser;
             }
 
-            const tokenRow = await consumeEmailVerificationToken(email, hashVerificationToken(verificationToken));
-            if (!tokenRow) {
-              throw new Error("INVALID_OR_EXPIRED_LINK");
-            }
-
-            let customer = await getCustomerByEmail(email);
-            if (!customer) {
-              const tokenName = tokenRow.name?.trim() ?? "";
-              if (!tokenName) {
-                throw new Error("ACCOUNT_NOT_FOUND");
+            if (verificationToken) {
+              const tokenRow = await consumeEmailVerificationToken(email, hashVerificationToken(verificationToken));
+              if (!tokenRow) {
+                throw new Error("INVALID_OR_EXPIRED_LINK");
               }
-              customer = await createCustomer(email, tokenName);
+
+              return {
+                id: "admin",
+                email,
+                name: credentials?.name ?? tokenRow.name ?? "Admin",
+                isAdminIntent: true,
+              } satisfies AuthenticatedUser;
             }
 
-            if (!customer) return null;
-            return { id: String(customer.id), email: customer.email, name: customer.name };
+            throw new Error("VERIFICATION_REQUIRED");
           }
 
-          return null;
+          if (!verificationToken) {
+            throw new Error("VERIFICATION_REQUIRED");
+          }
+
+          const tokenRow = await consumeEmailVerificationToken(email, hashVerificationToken(verificationToken));
+          if (!tokenRow) {
+            throw new Error("INVALID_OR_EXPIRED_LINK");
+          }
+
+          let customer = await getCustomerByEmail(email);
+          if (!customer) {
+            const tokenName = tokenRow.name?.trim() ?? "";
+            if (!tokenName) {
+              throw new Error("ACCOUNT_NOT_FOUND");
+            }
+            customer = await createCustomer(email, tokenName);
+          }
+
+          if (!customer) return null;
+          return {
+            id: String(customer.id),
+            email: customer.email,
+            name: customer.name,
+            isAdminIntent: false,
+          } satisfies AuthenticatedUser;
         }
 
         // Production mode: block admin credentials, require OAuth
@@ -158,7 +191,12 @@ export const authOptions: NextAuthOptions = {
         }
 
         if (!customer) return null;
-        return { id: String(customer.id), email: customer.email, name: customer.name };
+        return {
+          id: String(customer.id),
+          email: customer.email,
+          name: customer.name,
+          isAdminIntent: false,
+        } satisfies AuthenticatedUser;
       },
     }),
   ],
@@ -188,6 +226,9 @@ export const authOptions: NextAuthOptions = {
       if (user?.name) {
         token.name = user.name;
       }
+      if (user && "isAdminIntent" in user) {
+        token.adminIntent = user.isAdminIntent === true;
+      }
 
       if (account?.provider) {
         token.authProvider = account.provider;
@@ -195,7 +236,8 @@ export const authOptions: NextAuthOptions = {
 
       const authProvider = typeof token.authProvider === "string" ? token.authProvider : undefined;
       const isAdminViaGoogle = authProvider === "google" && isAdminEmail(token.email);
-      const isAdminViaTestMode = isTestMode() && authProvider === "credentials" && isAdminEmail(token.email);
+      const isAdminViaTestMode =
+        isTestMode() && authProvider === "credentials" && token.adminIntent === true && isAdminEmail(token.email);
       token.isAdmin = isAdminViaGoogle || isAdminViaTestMode;
       return token;
     },

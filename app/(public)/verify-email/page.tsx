@@ -23,6 +23,7 @@ export default function VerifyEmailPage() {
     async function runVerification() {
       const email = searchParams.get("email")?.trim().toLowerCase() ?? "";
       const token = searchParams.get("token")?.trim() ?? "";
+      const adminIntent = searchParams.get("admin") === "1";
 
       if (!email || !token) {
         if (!cancelled) {
@@ -35,6 +36,7 @@ export default function VerifyEmailPage() {
       const result = await signIn("credentials", {
         email,
         verificationToken: token,
+        adminIntent: adminIntent ? "true" : "false",
         redirect: false,
       });
 

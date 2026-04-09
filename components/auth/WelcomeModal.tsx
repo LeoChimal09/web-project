@@ -14,7 +14,7 @@ import useMediaQuery from "@mui/material/useMediaQuery";
 import { useTheme } from "@mui/material/styles";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 const GREETED_KEY = "tablestory_greeted";
 
@@ -24,11 +24,23 @@ type WelcomeModalProps = {
   isAuthenticated: boolean;
 };
 
+function shouldAutoOpenWelcomeModal(isAuthenticated: boolean) {
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  if (isAuthenticated) {
+    return false;
+  }
+
+  return !sessionStorage.getItem(GREETED_KEY);
+}
+
 export default function WelcomeModal({ isAuthenticated }: WelcomeModalProps) {
   const router = useRouter();
   const theme = useTheme();
   const isSmallScreen = useMediaQuery(theme.breakpoints.down("sm"));
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(() => shouldAutoOpenWelcomeModal(isAuthenticated));
   const [mode, setMode] = useState<Mode>("signin");
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
@@ -36,6 +48,16 @@ export default function WelcomeModal({ isAuthenticated }: WelcomeModalProps) {
   const [success, setSuccess] = useState<string | null>(null);
   const [developmentSignInUrl, setDevelopmentSignInUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  const resetForm = useCallback(() => {
+    setMode("signin");
+    setEmail("");
+    setName("");
+    setError(null);
+    setSuccess(null);
+    setDevelopmentSignInUrl(null);
+    setLoading(false);
+  }, []);
 
   // Listen for manual trigger from navbar button
   useEffect(() => {
@@ -45,25 +67,7 @@ export default function WelcomeModal({ isAuthenticated }: WelcomeModalProps) {
     };
     window.addEventListener("open-welcome-modal", handleOpen);
     return () => window.removeEventListener("open-welcome-modal", handleOpen);
-  }, []);
-
-  // Auto-show on first visit if not signed in
-  useEffect(() => {
-    if (isAuthenticated) return;
-    if (sessionStorage.getItem(GREETED_KEY)) return;
-    resetForm();
-    setOpen(true);
-  }, [isAuthenticated]);
-
-  function resetForm() {
-    setMode("signin");
-    setEmail("");
-    setName("");
-    setError(null);
-    setSuccess(null);
-    setDevelopmentSignInUrl(null);
-    setLoading(false);
-  }
+  }, [resetForm]);
 
   function handleDismiss() {
     sessionStorage.setItem(GREETED_KEY, "1");
@@ -95,7 +99,10 @@ export default function WelcomeModal({ isAuthenticated }: WelcomeModalProps) {
       }),
     });
 
-    const payload = (await response.json().catch(() => null)) as { error?: string; developmentSignInUrl?: string } | null;
+    const payload = (await response.json().catch(() => null)) as {
+      error?: string;
+      developmentSignInUrl?: string;
+    } | null;
 
     setLoading(false);
 

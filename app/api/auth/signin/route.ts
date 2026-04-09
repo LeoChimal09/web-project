@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { signIn } from "next-auth/react";
 import { rateLimitAuthMiddleware } from "@/lib/auth-rate-limit-middleware";
 
 /**
