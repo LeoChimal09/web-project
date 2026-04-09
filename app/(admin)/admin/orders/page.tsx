@@ -36,11 +36,34 @@ const STATUS_CONFIG: Record<OrderStatus, { label: string; color: "default" | "wa
 
 const WORKFLOW: OrderStatus[] = ["pending", "in_progress", "ready", "completed", "cancelled"];
 
+function loadHiddenAdminOrderRefs() {
+  if (typeof window === "undefined") {
+    return [] as string[];
+  }
+
+  try {
+    const raw = localStorage.getItem(HIDDEN_ADMIN_ORDER_HISTORY_KEY);
+    if (!raw) {
+      return [];
+    }
+
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+
+    return parsed.filter((value): value is string => typeof value === "string");
+  } catch {
+    localStorage.removeItem(HIDDEN_ADMIN_ORDER_HISTORY_KEY);
+    return [];
+  }
+}
+
 export default function AdminOrdersPage() {
   const { orders, loading, error, updateOrderStatus } = useOrdersApi({ pollIntervalMs: 2000 });
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const [showBottomFade, setShowBottomFade] = useState(false);
-  const [hiddenOrderRefs, setHiddenOrderRefs] = useState<string[]>([]);
+  const [hiddenOrderRefs, setHiddenOrderRefs] = useState<string[]>(loadHiddenAdminOrderRefs);
   const [etaDialogOrderRef, setEtaDialogOrderRef] = useState<string | null>(null);
   const [cancelDialogOrderRef, setCancelDialogOrderRef] = useState<string | null>(null);
   const [cancelNoteInput, setCancelNoteInput] = useState("");
@@ -90,25 +113,8 @@ export default function AdminOrdersPage() {
   };
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(HIDDEN_ADMIN_ORDER_HISTORY_KEY);
-      if (!raw) {
-        return;
-      }
-
-      const parsed = JSON.parse(raw) as unknown;
-      if (Array.isArray(parsed)) {
-        setHiddenOrderRefs(parsed.filter((value): value is string => typeof value === "string"));
-      }
-    } catch {
-      localStorage.removeItem(HIDDEN_ADMIN_ORDER_HISTORY_KEY);
-    }
-  }, []);
-
-  useEffect(() => {
     const el = scrollRef.current;
     if (!el || !showOverflowMask) {
-      setShowBottomFade(false);
       return;
     }
 
@@ -155,9 +161,39 @@ export default function AdminOrdersPage() {
         <Typography variant="overline" color="secondary.main">
           Admin Area
         </Typography>
-        <Typography variant="h3" sx={{ fontSize: { xs: "2rem", sm: "2.5rem" } }}>
-          Orders
-        </Typography>
+        <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ xs: "flex-start", sm: "center" }} spacing={2} sx={{ mb: 1 }}>
+          <Typography variant="h3" sx={{ fontSize: { xs: "2rem", sm: "2.5rem" } }}>
+            Orders
+          </Typography>
+          {visibleOrders.length > 0 && visibleOrders.some((order) => canRemoveOrderFromHistory(order.status)) && (
+            <Button
+              variant="outlined"
+              color="error"
+              size="small"
+              onClick={() => {
+                const removableOrders = visibleOrders.filter((order) => canRemoveOrderFromHistory(order.status));
+                setConfirmState({
+                  open: true,
+                  title: "Clear order history?",
+                  description: `This will remove ${removableOrders.length} completed or cancelled order${removableOrders.length !== 1 ? "s" : ""} from your admin browser history. This action only affects your local history view and does not delete actual orders.`,
+                  confirmLabel: "Clear History",
+                  confirmColor: "error",
+                  onConfirm: () => {
+                    const removableOrders = visibleOrders.filter((order) => canRemoveOrderFromHistory(order.status));
+                    setHiddenOrderRefs((prev) => {
+                      const next = [...new Set([...prev, ...removableOrders.map((o) => o.ref)])];
+                      localStorage.setItem(HIDDEN_ADMIN_ORDER_HISTORY_KEY, JSON.stringify(next));
+                      return next;
+                    });
+                    setConfirmState((prev) => ({ ...prev, open: false }));
+                  },
+                });
+              }}
+            >
+              Clear History
+            </Button>
+          )}
+        </Stack>
         <Typography color="text.secondary">
           Test-only admin view for local development. Status changes are persisted in the configured database.
         </Typography>

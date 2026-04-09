@@ -14,7 +14,7 @@ import useMediaQuery from "@mui/material/useMediaQuery";
 import { useTheme } from "@mui/material/styles";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 const GREETED_KEY = "tablestory_greeted";
 
@@ -24,16 +24,40 @@ type WelcomeModalProps = {
   isAuthenticated: boolean;
 };
 
+function shouldAutoOpenWelcomeModal(isAuthenticated: boolean) {
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  if (isAuthenticated) {
+    return false;
+  }
+
+  return !sessionStorage.getItem(GREETED_KEY);
+}
+
 export default function WelcomeModal({ isAuthenticated }: WelcomeModalProps) {
   const router = useRouter();
   const theme = useTheme();
   const isSmallScreen = useMediaQuery(theme.breakpoints.down("sm"));
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(() => shouldAutoOpenWelcomeModal(isAuthenticated));
   const [mode, setMode] = useState<Mode>("signin");
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [developmentSignInUrl, setDevelopmentSignInUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  const resetForm = useCallback(() => {
+    setMode("signin");
+    setEmail("");
+    setName("");
+    setError(null);
+    setSuccess(null);
+    setDevelopmentSignInUrl(null);
+    setLoading(false);
+  }, []);
 
   // Listen for manual trigger from navbar button
   useEffect(() => {
@@ -43,23 +67,7 @@ export default function WelcomeModal({ isAuthenticated }: WelcomeModalProps) {
     };
     window.addEventListener("open-welcome-modal", handleOpen);
     return () => window.removeEventListener("open-welcome-modal", handleOpen);
-  }, []);
-
-  // Auto-show on first visit if not signed in
-  useEffect(() => {
-    if (isAuthenticated) return;
-    if (sessionStorage.getItem(GREETED_KEY)) return;
-    resetForm();
-    setOpen(true);
-  }, [isAuthenticated]);
-
-  function resetForm() {
-    setMode("signin");
-    setEmail("");
-    setName("");
-    setError(null);
-    setLoading(false);
-  }
+  }, [resetForm]);
 
   function handleDismiss() {
     sessionStorage.setItem(GREETED_KEY, "1");
@@ -70,40 +78,48 @@ export default function WelcomeModal({ isAuthenticated }: WelcomeModalProps) {
   function handleModeChange(_: React.SyntheticEvent, value: Mode) {
     setMode(value);
     setError(null);
+    setSuccess(null);
+    setDevelopmentSignInUrl(null);
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    setSuccess(null);
+    setDevelopmentSignInUrl(null);
     setLoading(true);
 
     const normalizedEmail = email.trim().toLowerCase();
-    const result = await signIn("credentials", {
-      email: normalizedEmail,
-      password: "test",
-      name: mode === "signup" ? name.trim() : "",
-      redirect: false,
+    const response = await fetch("/api/auth/request-link", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email: normalizedEmail,
+        name: mode === "signup" ? name.trim() : undefined,
+      }),
     });
+
+    const payload = (await response.json().catch(() => null)) as {
+      error?: string;
+      developmentSignInUrl?: string;
+    } | null;
 
     setLoading(false);
 
-    const errorCode = result?.error;
-
-    if (!result || result.error || !result.ok) {
-      if (errorCode === "ACCOUNT_NOT_FOUND") {
-        setError('No account found. Switch to "Create Account" to register.');
-      } else if (errorCode === "ADMIN_OAUTH_REQUIRED") {
+    if (!response.ok) {
+      if (payload?.error === "ADMIN_OAUTH_REQUIRED") {
         handleDismiss();
-        void signIn("github", { callbackUrl: "/admin" });
-      } else if (errorCode?.startsWith("RATE_LIMITED:")) {
-        setError("Too many login attempts. Please try again in 15 minutes.");
-      } else {
-        setError("Something went wrong. Please try again.");
+        void signIn("google", { callbackUrl: "/admin" });
+        return;
       }
-    } else {
-      handleDismiss();
-      router.refresh();
+
+      setError(payload?.error ?? "Something went wrong. Please try again.");
+      return;
     }
+
+    setSuccess("Check your email for a secure sign-in link. It expires in 15 minutes.");
+    setDevelopmentSignInUrl(payload?.developmentSignInUrl ?? null);
+    router.refresh();
   }
 
   return (
@@ -169,6 +185,22 @@ export default function WelcomeModal({ isAuthenticated }: WelcomeModalProps) {
                   {error}
                 </Typography>
               )}
+              {success && (
+                <Typography variant="caption" color="success.main">
+                  {success}
+                </Typography>
+              )}
+              {developmentSignInUrl && (
+                <Button
+                  variant="outlined"
+                  fullWidth
+                  onClick={() => {
+                    window.location.href = developmentSignInUrl;
+                  }}
+                >
+                  Open test sign-in link
+                </Button>
+              )}
               <Button
                 type="submit"
                 variant="contained"
@@ -178,8 +210,8 @@ export default function WelcomeModal({ isAuthenticated }: WelcomeModalProps) {
                 {loading
                   ? "Please wait\u2026"
                   : mode === "signin"
-                    ? "Sign In"
-                    : "Create Account"}
+                    ? "Email Me a Sign-In Link"
+                    : "Create Account and Email Me a Link"}
               </Button>
             </Stack>
           </Box>

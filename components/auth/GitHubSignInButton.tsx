@@ -12,10 +12,10 @@ export default function GitHubSignInButton({ callbackUrl = "/admin" }: GitHubSig
     <Button
       variant="contained"
       onClick={() => {
-        void signIn("github", { callbackUrl });
+        void signIn("google", { callbackUrl });
       }}
     >
-      Sign in with GitHub
+      Sign in with Google
     </Button>
   );
 }
