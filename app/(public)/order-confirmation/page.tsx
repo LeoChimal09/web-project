@@ -14,12 +14,49 @@ import DeliveryDiningIcon from "@mui/icons-material/DeliveryDining";
 import StorefrontIcon from "@mui/icons-material/Storefront";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { useEffect } from "react";
+import { useCart } from "@/features/cart/CartContext";
 import { useOrdersApi } from "@/hooks/useOrdersApi";
 
 export default function OrderConfirmationPage() {
   const params = useSearchParams();
   const ref = params.get("ref");
-  const { order, loading, error } = useOrdersApi({ ref, enabled: Boolean(ref) });
+  const payment = params.get("payment");
+  const sessionId = params.get("session_id");
+  const { clearCart } = useCart();
+  const { order, loading, error, refetch } = useOrdersApi({ ref, enabled: Boolean(ref) });
+
+  useEffect(() => {
+    if (payment === "success") {
+      clearCart();
+    }
+  }, [payment, clearCart]);
+
+  useEffect(() => {
+    if (payment !== "success" || !ref || !sessionId) {
+      return;
+    }
+
+    let cancelled = false;
+
+    async function confirmStripePayment() {
+      await fetch("/api/payments/confirm", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ref, sessionId }),
+      }).catch(() => null);
+
+      if (!cancelled) {
+        void refetch();
+      }
+    }
+
+    void confirmStripePayment();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [payment, ref, sessionId, refetch]);
 
   const notFound = !ref || (!loading && !order);
 
@@ -57,6 +94,7 @@ export default function OrderConfirmationPage() {
   const tax = totalPrice * 0.08;
   const total = totalPrice + tax;
   const isDelivery = form.fulfillment === "delivery";
+  const paymentStatusLabel = order.paymentStatus ? order.paymentStatus.replaceAll("_", " ") : "paid";
 
   return (
     <Box sx={{ background: "linear-gradient(180deg, rgba(247,241,232,1) 0%, rgba(143,45,31,0.04) 100%)" }}>
@@ -75,6 +113,11 @@ export default function OrderConfirmationPage() {
                     Thank you, {form.firstName}. Your order reference is{" "}
                     <strong>{order.ref}</strong>.
                   </Typography>
+                  {form.payment === "card" && (
+                    <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                      Payment status: {paymentStatusLabel}
+                    </Typography>
+                  )}
                 </Box>
               </Stack>
             </CardContent>

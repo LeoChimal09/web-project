@@ -27,7 +27,7 @@ import { useTheme } from "@mui/material/styles";
 import Link from "next/link";
 import { signOut } from "next-auth/react";
 import { useCart } from "@/features/cart/CartContext";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 
 const navItems = [
   { label: "Home", href: "/" },
@@ -44,6 +44,12 @@ type SiteNavbarProps = {
 
 export default function SiteNavbar({ showAdmin = false, user = null }: SiteNavbarProps) {
   const { cart } = useCart();
+  const hydrated = useSyncExternalStore(
+    () => () => undefined,
+    () => true,
+    () => false,
+  );
+  const cartCount = hydrated ? cart.totalOrders : 0;
   const theme = useTheme();
   const isDesktop = useMediaQuery(theme.breakpoints.up("md"));
   const [accountAnchor, setAccountAnchor] = useState<HTMLElement | null>(null);
@@ -172,7 +178,7 @@ export default function SiteNavbar({ showAdmin = false, user = null }: SiteNavba
               color="primary"
               sx={{ ml: { xs: 0, md: 0.5 } }}
             >
-              <Badge badgeContent={cart.totalOrders} color="error">
+              <Badge badgeContent={cartCount} color="error">
                 <ShoppingCartIcon />
               </Badge>
             </IconButton>
@@ -288,7 +294,7 @@ export default function SiteNavbar({ showAdmin = false, user = null }: SiteNavba
             </ListItemButton>
           ))}
           <ListItemButton component={Link} href="/cart" onClick={handleDrawerNavigate}>
-            <ListItemText primary={`Cart (${cart.totalOrders})`} />
+            <ListItemText primary={`Cart (${cartCount})`} />
           </ListItemButton>
         </List>
         <Divider />

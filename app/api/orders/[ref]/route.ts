@@ -1,10 +1,17 @@
 import { NextResponse } from "next/server";
-import { deleteOrder, dismissOrderNotification, getOrderWithCustomerEmail, updateOrderStatus } from "@/server/repositories/orders-repository";
+import {
+  deleteOrder,
+  dismissOrderNotification,
+  getOrderWithCustomerEmail,
+  updateOrderPayment,
+  updateOrderStatus,
+} from "@/server/repositories/orders-repository";
 import type { CancellationActor, OrderEtaMinutes, OrderStatus } from "@/features/checkout/checkout.types";
 import { isValidOrderEtaMinutes } from "@/features/checkout/order-status";
 import { getAuthSession, isAdminSession } from "@/lib/auth";
 import { isRateLimited, getRemainingAttempts } from "@/lib/rate-limiter";
 import { sendCustomerOrderStatusUpdateEmail } from "@/lib/resend-mailer";
+import { getStripeClient } from "@/lib/stripe";
 
 const VALID_ORDER_STATUSES: OrderStatus[] = ["pending", "in_progress", "ready", "completed", "cancelled"];
 const VALID_CANCELLATION_ACTORS: CancellationActor[] = ["admin", "customer"];
@@ -122,6 +129,24 @@ export async function PATCH(request: Request, context: OrderRouteContext) {
     return NextResponse.json({ error: "Invalid order status." }, { status: 400 });
   }
 
+  // Backward compatibility: older cash orders may still have pending paymentStatus.
+  // Treat cash as paid and normalize stored payment fields.
+  if (existingOrder.form.payment === "cash" && existingOrder.paymentStatus !== "paid") {
+    await updateOrderPayment(ref, {
+      paymentStatus: "paid",
+      paidAt: existingOrder.paidAt ?? new Date().toISOString(),
+    });
+    existingOrder.paymentStatus = "paid";
+  }
+
+  const requiresPaidBeforeProgress = existingOrder.form.payment === "card";
+  if (status !== "cancelled" && requiresPaidBeforeProgress && existingOrder.paymentStatus !== "paid") {
+    return NextResponse.json(
+      { error: "Payment is not completed for this order yet." },
+      { status: 409 },
+    );
+  }
+
   if (!isAdmin && status !== "cancelled") {
     return NextResponse.json({ error: "Only admins can set this status." }, { status: 403 });
   }
@@ -159,11 +184,14 @@ export async function PATCH(request: Request, context: OrderRouteContext) {
       return NextResponse.json({ error: "Invalid cancellation actor." }, { status: 400 });
     }
 
-    parsedCancelledBy = cancelledBy as CancellationActor;
+    // Only admins may set cancelledBy — prevent customers spoofing "admin"
+    if (isAdmin) {
+      parsedCancelledBy = cancelledBy as CancellationActor;
+    }
   }
 
   if (status === "cancelled" && !parsedCancelledBy) {
-    parsedCancelledBy = "customer";
+    parsedCancelledBy = isAdmin ? "admin" : "customer";
   }
 
   const order = await updateOrderStatus(ref, status, {
@@ -188,12 +216,31 @@ export async function PATCH(request: Request, context: OrderRouteContext) {
     return NextResponse.json({ error: "Order not found." }, { status: 404 });
   }
 
-  const customerEmail = order.form.email.trim().toLowerCase();
-  if (customerEmail && existingOrder.status !== order.status) {
-    void sendCustomerOrderStatusUpdateEmail({ email: customerEmail, order }).catch(() => undefined);
+  // Auto-refund paid Stripe card orders when cancelled
+  let orderToReturn = order;
+  if (
+    status === "cancelled" &&
+    existingOrder.paymentStatus === "paid" &&
+    existingOrder.paymentProvider === "stripe" &&
+    existingOrder.stripePaymentIntentId
+  ) {
+    try {
+      const stripe = getStripeClient();
+      await stripe.refunds.create({ payment_intent: existingOrder.stripePaymentIntentId });
+      await updateOrderPayment(ref, { paymentStatus: "refunded" });
+      orderToReturn = { ...orderToReturn, paymentStatus: "refunded" };
+    } catch {
+      // Refund attempt failed — order is still cancelled.
+      // Admin can issue the refund manually via the Stripe dashboard.
+    }
   }
 
-  return NextResponse.json(order);
+  const customerEmail = orderToReturn.form.email.trim().toLowerCase();
+  if (customerEmail && existingOrder.status !== orderToReturn.status) {
+    void sendCustomerOrderStatusUpdateEmail({ email: customerEmail, order: orderToReturn }).catch(() => undefined);
+  }
+
+  return NextResponse.json(orderToReturn);
 }
 
 export async function DELETE(_request: Request, context: OrderRouteContext) {
