@@ -30,13 +30,36 @@ const STATUS_CONFIG: Record<OrderStatus, { label: string; color: "default" | "wa
   cancelled:  { label: "Cancelled",   color: "error"    },
 };
 
+function loadHiddenOrderRefs() {
+  if (typeof window === "undefined") {
+    return [] as string[];
+  }
+
+  try {
+    const raw = localStorage.getItem(HIDDEN_ORDER_HISTORY_KEY);
+    if (!raw) {
+      return [];
+    }
+
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+
+    return parsed.filter((value): value is string => typeof value === "string");
+  } catch {
+    localStorage.removeItem(HIDDEN_ORDER_HISTORY_KEY);
+    return [];
+  }
+}
+
 export default function OrdersPage() {
   const { cart, remakeOrder } = useCart();
   const { orders, loading, error, updateOrderStatus } = useOrdersApi();
   const router = useRouter();
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const [showBottomFade, setShowBottomFade] = useState(false);
-  const [hiddenOrderRefs, setHiddenOrderRefs] = useState<string[]>([]);
+  const [hiddenOrderRefs, setHiddenOrderRefs] = useState<string[]>(loadHiddenOrderRefs);
   const [confirmState, setConfirmState] = useState<{
     open: boolean;
     title: string;
@@ -53,29 +76,12 @@ export default function OrdersPage() {
     onConfirm: () => {},
   });
 
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(HIDDEN_ORDER_HISTORY_KEY);
-      if (!raw) {
-        return;
-      }
-
-      const parsed = JSON.parse(raw) as unknown;
-      if (Array.isArray(parsed)) {
-        setHiddenOrderRefs(parsed.filter((value): value is string => typeof value === "string"));
-      }
-    } catch {
-      localStorage.removeItem(HIDDEN_ORDER_HISTORY_KEY);
-    }
-  }, []);
-
   const visibleOrders = orders.filter((order) => !hiddenOrderRefs.includes(order.ref));
   const showOverflowMask = visibleOrders.length > 3;
 
   useEffect(() => {
     const el = scrollRef.current;
     if (!el || !showOverflowMask) {
-      setShowBottomFade(false);
       return;
     }
 
@@ -161,11 +167,40 @@ export default function OrdersPage() {
     );
   }
 
+  // Count removable orders (completed or cancelled)
+  const removableOrders = visibleOrders.filter((order) => canRemoveOrderFromHistory(order.status));
+  const hasRemovableOrders = removableOrders.length > 0;
+
+  const handleClearHistory = () => {
+    setConfirmState({
+      open: true,
+      title: "Clear order history?",
+      description: `This will remove ${removableOrders.length} completed or cancelled order${removableOrders.length !== 1 ? "s" : ""} from your browser history. This action only affects your local history view and does not delete actual orders.`,
+      confirmLabel: "Clear History",
+      confirmColor: "error",
+      onConfirm: () => {
+        setHiddenOrderRefs((prev) => {
+          const next = [...new Set([...prev, ...removableOrders.map((o) => o.ref)])];
+          localStorage.setItem(HIDDEN_ORDER_HISTORY_KEY, JSON.stringify(next));
+          return next;
+        });
+        setConfirmState((prev) => ({ ...prev, open: false }));
+      },
+    });
+  };
+
   return (
     <Box sx={{ background: "linear-gradient(180deg, rgba(247,241,232,1) 0%, rgba(143,45,31,0.04) 100%)" }}>
       <Container maxWidth="md" sx={{ py: { xs: 4, md: 8 } }}>
         <Stack spacing={4}>
-          <Typography variant="h3" sx={{ fontSize: { xs: "2rem", sm: "2.5rem" } }}>My Orders</Typography>
+          <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ xs: "flex-start", sm: "center" }} spacing={2}>
+            <Typography variant="h3" sx={{ fontSize: { xs: "2rem", sm: "2.5rem" } }}>My Orders</Typography>
+            {hasRemovableOrders && (
+              <Button variant="outlined" color="error" size="small" onClick={handleClearHistory}>
+                Clear History
+              </Button>
+            )}
+          </Stack>
 
           <Box sx={{ position: "relative" }}>
             <Box

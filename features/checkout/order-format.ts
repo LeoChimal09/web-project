@@ -7,8 +7,7 @@ export function formatOrderTimestamp(isoString: string) {
     day: "numeric",
     hour: "numeric",
     minute: "2-digit",
-    second: "2-digit",
     hour12: true,
-    timeZone: "UTC",
+    timeZone: "America/Chicago",
   }).format(date);
 }

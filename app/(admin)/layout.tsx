@@ -2,9 +2,11 @@ import Container from "@mui/material/Container";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import Button from "@mui/material/Button";
+import Alert from "@mui/material/Alert";
 import SiteNavbar from "@/components/shared/SiteNavbar";
 import SignInModal from "@/components/auth/SignInModal";
 import { getAuthSession, isAdminSession } from "@/lib/auth";
+import { isStripeSandboxMode } from "@/lib/stripe";
 
 export default async function AdminLayout({
   children,
@@ -13,6 +15,7 @@ export default async function AdminLayout({
 }>) {
   const session = await getAuthSession();
   const isAdminEnabled = isAdminSession(session);
+  const isStripeSandbox = isStripeSandboxMode();
   const navUser = isAdminEnabled
     ? { name: session?.user?.name ?? null, image: session?.user?.image ?? null, href: "/admin" }
     : null;
@@ -22,7 +25,16 @@ export default async function AdminLayout({
       <SiteNavbar showAdmin={isAdminEnabled} user={navUser} />
       <main>
         {isAdminEnabled ? (
-          children
+          <>
+            {isStripeSandbox ? (
+              <Container maxWidth="lg" sx={{ pt: 2 }}>
+                <Alert severity="warning" variant="filled">
+                  Sandbox Payments Enabled: Stripe is running in test mode. No real customer charges will be processed.
+                </Alert>
+              </Container>
+            ) : null}
+            {children}
+          </>
         ) : (
           <Container maxWidth="sm" sx={{ py: { xs: 6, md: 10 }, textAlign: "center" }}>
             <Stack spacing={3} alignItems="center">
@@ -31,10 +43,10 @@ export default async function AdminLayout({
               </Typography>
               <Typography variant="h4">Admin sign-in required</Typography>
               <Typography color="text.secondary">
-                Sign in with an allowed GitHub account to access admin-only routes.
+                Sign in with an allowed Google account to access admin-only routes.
               </Typography>
               <SignInModal
-                trigger={<Button variant="contained" size="large">Sign in with GitHub</Button>}
+                trigger={<Button variant="contained" size="large">Sign in with Google</Button>}
               />
             </Stack>
           </Container>

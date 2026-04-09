@@ -1,7 +1,8 @@
 import Container from "@mui/material/Container";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
-import GitHubSignInButton from "@/components/auth/GitHubSignInButton";
+import Link from "next/link";
+import Button from "@mui/material/Button";
 
 export default function LoginPage() {
   return (
@@ -12,10 +13,15 @@ export default function LoginPage() {
         </Typography>
         <Typography variant="h4">Sign in to access the admin area</Typography>
         <Typography color="text.secondary">
-          Only approved GitHub accounts listed in the admin allowlist can access staff routes.
+          Navigate to the admin area to sign in with Google OAuth or email verification (if test mode is enabled).
         </Typography>
-        <Stack alignItems="center">
-          <GitHubSignInButton />
+        <Stack alignItems="center" spacing={2}>
+          <Button variant="contained" LinkComponent={Link} href="/admin">
+            Go to Admin Area
+          </Button>
+          <Button variant="outlined" LinkComponent={Link} href="/">
+            Back to Home
+          </Button>
         </Stack>
       </Stack>
     </Container>

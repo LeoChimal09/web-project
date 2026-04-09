@@ -19,12 +19,34 @@ import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
 import Typography from "@mui/material/Typography";
 import DeliveryDiningIcon from "@mui/icons-material/DeliveryDining";
 import StorefrontIcon from "@mui/icons-material/Storefront";
+import Alert from "@mui/material/Alert";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
 import { useCart } from "@/features/cart/CartContext";
 import { useOrdersApi } from "@/hooks/useOrdersApi";
 import type { CheckoutForm, FulfillmentType, PaymentMethod } from "@/features/checkout/checkout.types";
+
+const FORM_STORAGE_KEY = "tablestory_checkout_form";
+
+function saveFormToSession(form: CheckoutForm) {
+  try {
+    sessionStorage.setItem(FORM_STORAGE_KEY, JSON.stringify(form));
+  } catch {
+    // sessionStorage unavailable — safe to ignore
+  }
+}
+
+function restoreFormFromSession(): CheckoutForm | null {
+  try {
+    const raw = sessionStorage.getItem(FORM_STORAGE_KEY);
+    if (!raw) return null;
+    sessionStorage.removeItem(FORM_STORAGE_KEY);
+    return JSON.parse(raw) as CheckoutForm;
+  } catch {
+    return null;
+  }
+}
 
 const EMPTY_FORM: CheckoutForm = {
   firstName: "",
@@ -39,6 +61,11 @@ const EMPTY_FORM: CheckoutForm = {
 };
 
 type FieldErrors = Partial<Record<keyof CheckoutForm | "address1" | "city" | "postcode", string>>;
+
+type RestaurantStatus = {
+  isOpen: boolean;
+  message: string;
+};
 
 function validate(form: CheckoutForm): FieldErrors {
   const errors: FieldErrors = {};
@@ -60,12 +87,90 @@ function validate(form: CheckoutForm): FieldErrors {
 export default function CheckoutPage() {
   const { cart, clearCart } = useCart();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const paymentParam = searchParams.get("payment");
+  const cancelledRef = searchParams.get("ref");
+  const wasCancelled = paymentParam === "cancelled";
   const { createOrder } = useOrdersApi({ enabled: false });
-  const [form, setForm] = useState<CheckoutForm>(EMPTY_FORM);
+  const [form, setForm] = useState<CheckoutForm>(() => {
+    if (typeof window !== "undefined" && wasCancelled) {
+      return restoreFormFromSession() ?? EMPTY_FORM;
+    }
+    return EMPTY_FORM;
+  });
   const [errors, setErrors] = useState<FieldErrors>({});
   const [submitted, setSubmitted] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [restaurantStatus, setRestaurantStatus] = useState<RestaurantStatus>({
+    isOpen: true,
+    message: "",
+  });
+
+  useEffect(() => {
+    let mounted = true;
+
+    const loadRestaurantStatus = async () => {
+      try {
+        const response = await fetch("/api/restaurant-status", { cache: "no-store" });
+        if (!response.ok) {
+          return;
+        }
+
+        const payload = (await response.json().catch(() => null)) as RestaurantStatus | null;
+        if (!mounted || !payload) {
+          return;
+        }
+
+        setRestaurantStatus({
+          isOpen: payload.isOpen === true,
+          message: payload.message ?? "",
+        });
+      } catch {
+        // Keep checkout available if status endpoint is temporarily unreachable.
+      }
+    };
+
+    void loadRestaurantStatus();
+    const interval = setInterval(() => {
+      void loadRestaurantStatus();
+    }, 60000);
+
+    return () => {
+      mounted = false;
+      clearInterval(interval);
+    };
+  }, []);
+
+  // When returning from a cancelled Stripe session, immediately mark the
+  // abandoned order as failed so it doesn't linger as "pending" in the admin view.
+  useEffect(() => {
+    if (!wasCancelled || !cancelledRef) {
+      return;
+    }
+
+    // The checkout-session route embeds the Stripe session ID in the cancel_url
+    // as the `ref` param. However, to call abandon we need the Stripe session ID,
+    // which we stored in sessionStorage alongside the form before redirecting.
+    // We re-read it from a separate key preserved for exactly this purpose.
+    let stripeSessionId: string | null = null;
+    try {
+      stripeSessionId = sessionStorage.getItem("tablestory_checkout_stripe_session");
+      sessionStorage.removeItem("tablestory_checkout_stripe_session");
+    } catch {
+      // sessionStorage unavailable — skip cleanup
+    }
+
+    if (!stripeSessionId) {
+      return;
+    }
+
+    void fetch("/api/payments/abandon", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ref: cancelledRef, sessionId: stripeSessionId }),
+    }).catch(() => null);
+  }, [wasCancelled, cancelledRef]);
 
   const tax = cart.totalPrice * 0.08;
   const total = cart.totalPrice + tax;
@@ -98,6 +203,12 @@ export default function CheckoutPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+
+    if (!restaurantStatus.isOpen) {
+      setSubmitError(restaurantStatus.message || "We are currently closed.");
+      return;
+    }
+
     const errs = validate(form);
     if (Object.keys(errs).length > 0) {
       setErrors(errs);
@@ -108,6 +219,37 @@ export default function CheckoutPage() {
     setIsSubmitting(true);
 
     try {
+      if (form.payment === "card") {
+        const response = await fetch("/api/payments/checkout-session", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            form,
+            orders: cart.orders,
+            totalPrice: cart.totalPrice,
+          }),
+        });
+
+        const payload = (await response.json().catch(() => null)) as
+          | { checkoutUrl?: string; stripeSessionId?: string; error?: string }
+          | null;
+
+        if (!response.ok || !payload?.checkoutUrl) {
+          throw new Error(payload?.error ?? "Unable to initialize Stripe checkout.");
+        }
+
+        saveFormToSession(form);
+        try {
+          if (payload.stripeSessionId) {
+            sessionStorage.setItem("tablestory_checkout_stripe_session", payload.stripeSessionId);
+          }
+        } catch {
+          // sessionStorage unavailable — abandon cleanup will be skipped
+        }
+        window.location.href = payload.checkoutUrl;
+        return;
+      }
+
       const placed = await createOrder({
         form,
         orders: cart.orders,
@@ -134,6 +276,12 @@ export default function CheckoutPage() {
         <Typography variant="h3" sx={{ mb: 4, fontSize: { xs: "2rem", sm: "2.5rem" } }}>
           Checkout
         </Typography>
+
+        {wasCancelled && (
+          <Alert severity="info" sx={{ mb: 3 }}>
+            Your payment was cancelled. Your cart has been saved — update your details or try again below.
+          </Alert>
+        )}
 
         <form onSubmit={handleSubmit} noValidate>
           <Grid container spacing={4}>
@@ -333,6 +481,9 @@ export default function CheckoutPage() {
 
                 {/* 5. Terms + Submit */}
                 <Stack spacing={1}>
+                  {!restaurantStatus.isOpen && (
+                    <FormHelperText error>{restaurantStatus.message || "We are currently closed."}</FormHelperText>
+                  )}
                   {submitError && <FormHelperText error>{submitError}</FormHelperText>}
                   <FormControlLabel
                     control={
@@ -348,8 +499,15 @@ export default function CheckoutPage() {
                       {errors.termsAgreed}
                     </FormHelperText>
                   )}
-                  <Button type="submit" variant="contained" size="large" fullWidth sx={{ mt: 1 }} disabled={isSubmitting}>
-                    {isSubmitting ? "Placing Order..." : "Place Order"}
+                  <Button
+                    type="submit"
+                    variant="contained"
+                    size="large"
+                    fullWidth
+                    sx={{ mt: 1 }}
+                    disabled={isSubmitting || !restaurantStatus.isOpen}
+                  >
+                    {isSubmitting ? "Placing Order..." : form.payment === "card" ? "Continue to Secure Payment" : "Place Order"}
                   </Button>
                 </Stack>
               </Stack>

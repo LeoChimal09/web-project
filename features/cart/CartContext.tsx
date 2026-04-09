@@ -44,23 +44,18 @@ function saveCartToStorage(orders: OrderEntry[]) {
 }
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
-  const [orders, setOrders] = useState<OrderEntry[]>([]);
-  const [hydrated, setHydrated] = useState(false);
-
-  // Hydrate from localStorage after first render (avoids SSR mismatch)
-  useEffect(() => {
-    const saved = loadCartFromStorage();
-    if (saved.length > 0) {
-      setOrders(saved);
+  const [orders, setOrders] = useState<OrderEntry[]>(() => {
+    if (typeof window === "undefined") {
+      return [];
     }
-    setHydrated(true);
-  }, []);
+
+    return loadCartFromStorage();
+  });
 
   // Write-through: persist every change after hydration
   useEffect(() => {
-    if (!hydrated) return;
     saveCartToStorage(orders);
-  }, [orders, hydrated]);
+  }, [orders]);
 
   const placeOrder = useCallback((lines: PendingLine[]) => {
     const cartItems: CartItem[] = lines.map(({ item, quantity }) => ({

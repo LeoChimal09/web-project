@@ -1,5 +1,6 @@
 "use client";
 
+import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Card from "@mui/material/Card";
@@ -8,6 +9,7 @@ import Container from "@mui/material/Container";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 
 const featuredMenu = [
   { title: "Fire-Grilled Ribeye", detail: "Herb butter, roasted root vegetables" },
@@ -16,9 +18,17 @@ const featuredMenu = [
 ];
 
 export default function HomePage() {
+  const searchParams = useSearchParams();
+  const authError = searchParams.get("error");
+
   return (
     <Box sx={{ backgroundColor: "background.default" }}>
       <Container maxWidth="lg" sx={{ py: { xs: 6, md: 10 } }}>
+        {authError === "AccessDenied" && (
+          <Alert severity="error" sx={{ mb: 3 }}>
+            Admin sign-in failed. This Google account is not in the admin allowlist.
+          </Alert>
+        )}
         <Stack spacing={2} sx={{ maxWidth: 720, mb: { xs: 5, md: 8 } }}>
           <Typography variant="overline" color="secondary.main">
             Inspired by our restaurant reference flow

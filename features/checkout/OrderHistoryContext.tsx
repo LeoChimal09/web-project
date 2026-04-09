@@ -17,17 +17,18 @@ type OrderHistoryContextType = {
 const OrderHistoryContext = createContext<OrderHistoryContextType | undefined>(undefined);
 
 export function OrderHistoryProvider({ children }: { children: React.ReactNode }) {
-  const [orders, setOrders] = useState<PlacedOrder[]>([]);
+  const [orders, setOrders] = useState<PlacedOrder[]>(() => {
+    if (typeof window === "undefined") {
+      return [];
+    }
 
-  // Hydrate from localStorage on mount
-  useEffect(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) setOrders(JSON.parse(raw) as PlacedOrder[]);
+      return raw ? (JSON.parse(raw) as PlacedOrder[]) : [];
     } catch {
-      // ignore corrupt data
+      return [];
     }
-  }, []);
+  });
 
   // Persist to localStorage whenever orders change
   useEffect(() => {
