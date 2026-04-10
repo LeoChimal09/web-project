@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { isRateLimited } from "@/lib/rate-limiter";
-import { sendAdminNewOrderEmail, sendCustomerOrderReceivedEmail } from "@/lib/resend-mailer";
+import { sendAdminNewOrderEmail } from "@/lib/resend-mailer";
 import { getStripeClient } from "@/lib/stripe";
 import { getOrderWithCustomerEmail, updateOrderPayment } from "@/server/repositories/orders-repository";
 
@@ -68,15 +68,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Order not found." }, { status: 404 });
     }
 
-    const recipientEmails = Array.from(
-      new Set([
-        updated.form.email.trim().toLowerCase(),
-        customerEmail ?? "",
-      ].filter(Boolean)),
-    );
-    if (recipientEmails.length > 0) {
-      void sendCustomerOrderReceivedEmail({ email: recipientEmails, order: updated }).catch(() => undefined);
-    }
     void sendAdminNewOrderEmail({ order: updated }).catch(() => undefined);
 
     return NextResponse.json({ ok: true, order: updated });

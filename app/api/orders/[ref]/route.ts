@@ -241,7 +241,13 @@ export async function PATCH(request: Request, context: OrderRouteContext) {
       existingOrderResult.customerEmail ?? "",
     ].filter(Boolean)),
   );
-  if (recipientEmails.length > 0 && existingOrder.status !== orderToReturn.status) {
+  const shouldEmailCustomer =
+    recipientEmails.length > 0 &&
+    existingOrder.status !== orderToReturn.status &&
+    (orderToReturn.status === "in_progress" ||
+      orderToReturn.status === "ready" ||
+      (orderToReturn.status === "cancelled" && orderToReturn.cancelledBy === "admin"));
+  if (shouldEmailCustomer) {
     void sendCustomerOrderStatusUpdateEmail({ email: recipientEmails, order: orderToReturn }).catch(() => undefined);
   }
 

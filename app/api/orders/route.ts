@@ -5,7 +5,7 @@ import { calculateOrderSubtotal } from "@/features/checkout/order-pricing";
 import { getAuthSession, isAdminSession } from "@/lib/auth";
 import { getRestaurantStatus } from "@/lib/restaurant-hours";
 import { isRateLimited } from "@/lib/rate-limiter";
-import { sendAdminNewOrderEmail, sendCustomerOrderReceivedEmail } from "@/lib/resend-mailer";
+import { sendAdminNewOrderEmail } from "@/lib/resend-mailer";
 
 const MAX_GUEST_REFS = 25;
 const ORDER_REF_PATTERN = /^TBL-[A-Z0-9-]{6,64}$/;
@@ -76,15 +76,6 @@ export async function POST(request: Request) {
     },
   );
 
-  const recipientEmails = Array.from(
-    new Set([
-      order.form.email.trim().toLowerCase(),
-      session?.user?.email?.trim().toLowerCase() ?? "",
-    ].filter(Boolean)),
-  );
-  if (recipientEmails.length > 0 && order.paymentStatus === "paid") {
-    void sendCustomerOrderReceivedEmail({ email: recipientEmails, order }).catch(() => undefined);
-  }
   if (order.paymentStatus === "paid") {
     void sendAdminNewOrderEmail({ order }).catch(() => undefined);
   }

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import type Stripe from "stripe";
-import { sendAdminNewOrderEmail, sendCustomerOrderReceivedEmail } from "@/lib/resend-mailer";
+import { sendAdminNewOrderEmail } from "@/lib/resend-mailer";
 import { getStripeClient, getStripeWebhookSecret } from "@/lib/stripe";
 import {
   getOrder,
@@ -44,15 +44,6 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
     return;
   }
 
-  const recipientEmails = Array.from(
-    new Set([
-      updated.form.email.trim().toLowerCase(),
-      customerEmail ?? "",
-    ].filter(Boolean)),
-  );
-  if (recipientEmails.length > 0) {
-    void sendCustomerOrderReceivedEmail({ email: recipientEmails, order: updated }).catch(() => undefined);
-  }
   void sendAdminNewOrderEmail({ order: updated }).catch(() => undefined);
 }
 
