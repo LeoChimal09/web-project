@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { isRateLimited } from "@/lib/rate-limiter";
 import { sendAdminNewOrderEmail, sendCustomerOrderReceivedEmail } from "@/lib/resend-mailer";
 import { getStripeClient } from "@/lib/stripe";
-import { getOrder, updateOrderPayment } from "@/server/repositories/orders-repository";
+import { getOrderWithCustomerEmail, updateOrderPayment } from "@/server/repositories/orders-repository";
 
 export const runtime = "nodejs";
 
@@ -25,10 +25,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Missing ref or sessionId." }, { status: 400 });
   }
 
-  const order = await getOrder(ref);
-  if (!order) {
+  const orderResult = await getOrderWithCustomerEmail(ref);
+  if (!orderResult) {
     return NextResponse.json({ error: "Order not found." }, { status: 404 });
   }
+
+  const { order, customerEmail } = orderResult;
 
   if (order.paymentStatus === "paid") {
     return NextResponse.json({ ok: true, order });
@@ -66,9 +68,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Order not found." }, { status: 404 });
     }
 
-    const customerEmail = updated.form.email.trim().toLowerCase();
-    if (customerEmail) {
-      void sendCustomerOrderReceivedEmail({ email: customerEmail, order: updated }).catch(() => undefined);
+    const recipientEmails = Array.from(
+      new Set([
+        updated.form.email.trim().toLowerCase(),
+        customerEmail ?? "",
+      ].filter(Boolean)),
+    );
+    if (recipientEmails.length > 0) {
+      void sendCustomerOrderReceivedEmail({ email: recipientEmails, order: updated }).catch(() => undefined);
     }
     void sendAdminNewOrderEmail({ order: updated }).catch(() => undefined);
 

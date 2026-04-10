@@ -76,9 +76,14 @@ export async function POST(request: Request) {
     },
   );
 
-  const customerEmail = order.form.email.trim().toLowerCase();
-  if (customerEmail && order.paymentStatus === "paid") {
-    void sendCustomerOrderReceivedEmail({ email: customerEmail, order }).catch(() => undefined);
+  const recipientEmails = Array.from(
+    new Set([
+      order.form.email.trim().toLowerCase(),
+      session?.user?.email?.trim().toLowerCase() ?? "",
+    ].filter(Boolean)),
+  );
+  if (recipientEmails.length > 0 && order.paymentStatus === "paid") {
+    void sendCustomerOrderReceivedEmail({ email: recipientEmails, order }).catch(() => undefined);
   }
   if (order.paymentStatus === "paid") {
     void sendAdminNewOrderEmail({ order }).catch(() => undefined);

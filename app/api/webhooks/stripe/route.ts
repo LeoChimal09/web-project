@@ -2,15 +2,24 @@ import { NextResponse } from "next/server";
 import type Stripe from "stripe";
 import { sendAdminNewOrderEmail, sendCustomerOrderReceivedEmail } from "@/lib/resend-mailer";
 import { getStripeClient, getStripeWebhookSecret } from "@/lib/stripe";
-import { getOrder, getOrderByStripeCheckoutSessionId, updateOrderPayment } from "@/server/repositories/orders-repository";
+import {
+  getOrder,
+  getOrderByStripeCheckoutSessionId,
+  getOrderWithCustomerEmail,
+  updateOrderPayment,
+} from "@/server/repositories/orders-repository";
 
 export const runtime = "nodejs";
 
 async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) {
   const metadataRef = session.metadata?.orderRef?.trim();
-  const existing = metadataRef
-    ? await getOrder(metadataRef)
+  const existingResult = metadataRef
+    ? await getOrderWithCustomerEmail(metadataRef)
+    : null;
+  const existing = existingResult
+    ? existingResult.order
     : await getOrderByStripeCheckoutSessionId(session.id);
+  const customerEmail = existingResult?.customerEmail ?? null;
 
   if (!existing) {
     return;
@@ -35,9 +44,14 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
     return;
   }
 
-  const customerEmail = updated.form.email.trim().toLowerCase();
-  if (customerEmail) {
-    void sendCustomerOrderReceivedEmail({ email: customerEmail, order: updated }).catch(() => undefined);
+  const recipientEmails = Array.from(
+    new Set([
+      updated.form.email.trim().toLowerCase(),
+      customerEmail ?? "",
+    ].filter(Boolean)),
+  );
+  if (recipientEmails.length > 0) {
+    void sendCustomerOrderReceivedEmail({ email: recipientEmails, order: updated }).catch(() => undefined);
   }
   void sendAdminNewOrderEmail({ order: updated }).catch(() => undefined);
 }

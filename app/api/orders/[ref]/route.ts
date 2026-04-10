@@ -235,9 +235,14 @@ export async function PATCH(request: Request, context: OrderRouteContext) {
     }
   }
 
-  const customerEmail = orderToReturn.form.email.trim().toLowerCase();
-  if (customerEmail && existingOrder.status !== orderToReturn.status) {
-    void sendCustomerOrderStatusUpdateEmail({ email: customerEmail, order: orderToReturn }).catch(() => undefined);
+  const recipientEmails = Array.from(
+    new Set([
+      orderToReturn.form.email.trim().toLowerCase(),
+      existingOrderResult.customerEmail ?? "",
+    ].filter(Boolean)),
+  );
+  if (recipientEmails.length > 0 && existingOrder.status !== orderToReturn.status) {
+    void sendCustomerOrderStatusUpdateEmail({ email: recipientEmails, order: orderToReturn }).catch(() => undefined);
   }
 
   return NextResponse.json(orderToReturn);

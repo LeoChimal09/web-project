@@ -91,7 +91,7 @@ export async function sendCustomerSignInLinkEmail(input: {
 }
 
 export async function sendCustomerOrderReceivedEmail(input: {
-  email: string;
+  email: string | string[];
   order: PlacedOrder;
 }) {
   const orderUrl = `${getAppBaseUrl()}/orders/${encodeURIComponent(input.order.ref)}`;
@@ -114,7 +114,7 @@ export async function sendCustomerOrderReceivedEmail(input: {
 }
 
 export async function sendCustomerOrderStatusUpdateEmail(input: {
-  email: string;
+  email: string | string[];
   order: PlacedOrder;
 }) {
   const orderUrl = `${getAppBaseUrl()}/orders/${encodeURIComponent(input.order.ref)}`;
@@ -128,6 +128,8 @@ export async function sendCustomerOrderStatusUpdateEmail(input: {
         <p>Order reference: <strong>${escapeHtml(input.order.ref)}</strong></p>
         <p>${escapeHtml(getOrderProgressMessage(input.order.status, input.order.etaMinutes, input.order.cancellationNote))}</p>
         <p>Placed at: ${escapeHtml(formatOrderTimestamp(input.order.placedAt))}</p>
+        <ul>${renderOrderItems(input.order)}</ul>
+        <p>Total: <strong>$${input.order.totalPrice.toFixed(2)}</strong></p>
         ${renderPrimaryLink(orderUrl, "View order details")}
       </div>
     `,
