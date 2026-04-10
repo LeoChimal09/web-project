@@ -19,6 +19,7 @@ function getPool() {
     globalThis.__tablestoryMysqlPool = mysql.createPool({
       uri: getConnectionString(),
       connectionLimit: 10,
+      ssl: { rejectUnauthorized: false },
     });
   }
 
